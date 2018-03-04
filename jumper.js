@@ -9,6 +9,7 @@ var ctx = canvas.getContext("2d");
 var players = [];
 var stage;
 var g = 1;
+var ag = -1; // attack gravity. acceleration back to starting pos after an attack
 
 function main(){
     players.push(new Player("Player A", 0, "white"));
@@ -55,8 +56,6 @@ function Player(name, id, color){
     this.x = 0;
     this.y = 0;
 
-    this.direction = 'n'
-
     this.radius = 20;
 
     this.velocity = [0,0]; // velocity x and y
@@ -65,14 +64,53 @@ function Player(name, id, color){
         this.direction = direction;
     }
 
+    this.isJumping = false;
+
     this.jump = function(){
+        this.isJumping = true;
         this.velocity[1] = -20;
     }
+    
+    // 1 = right, -1 = left, 0 = neutral
+    this.direction = 0; // direction of movement
+    this.directionFacing = 0; // direction of facing currently
+
+    this.move = function(d){
+        this.velocity[0] = 5*d;
+        this.direction = d;
+        if (d != 0){
+            this.directionFacing = d;
+        }
+    }
+
+    this.isAttacking = false;
+    this.attackPos = [0,0]; // pullback coordinates after an attack
+    this.attackVelocity = [0,0]; // original velocity before attack 
+    this.attack = function(){
+        if (this.direction == 0){ // can only attack while not moving
+            this.isAttacking = true;
+            this.attackPos = [this.x,this.y];
+            this.attackVelocity = [this.velocity[0],this.velocity[1]];
+            this.velocity[0] += 10*this.directionFacing;
+        }
+        //this.radius *= 1.3;
+    }
+}
+
+
+// return true if player p can move in direction d
+function canMove(p, d){
+
 }
 
 function checkKey(e){
     e = e || window.event;
-    if (e.keyCode == '32') players[0].jump();
+    if (e.keyCode == '32' && !(players[0].isJumping)) players[0].jump();
+    if (e.keyCode == '38' && !(players[1].isJumping)) players[1].jump();
+    if (e.keyCode == '39' && !(players[0].isAttacking)) players[0].move(1);
+    if (e.keyCode == '37' && !(players[0].isAttacking)) players[0].move(-1);
+    if (e.keyCode == '40' && !(players[0].isAttacking)) players[0].move(0);
+    if (e.keyCode == '65' && !(players[0].isAttacking)) players[0].attack();
 }
 document.onkeydown = checkKey;
 
@@ -108,16 +146,45 @@ function updateCanvas(){
 function movePlayers(){
     for (var p = 0; p < players.length; p++){
         // if we will reach the ground on the next velocity step
-        if (players[p].y + players[p].velocity[1] + players[p].radius> stage.y){
+        // or also applies if we are currently on the ground due to gravity
+        if (players[p].y + players[p].velocity[1] + players[p].radius >= stage.y){
             // place player on the ground
             players[p].y = stage.y - players[p].radius;
             // stop movement
             players[p].velocity[1] = 0;
+            players[p].isJumping = false;
+
         } else{
             // update velocity due to gravity
             players[p].velocity[1] += g;
             // update position based on new velocity
             players[p].y += players[p].velocity[1];
+
+
+        }
+        // update x-position
+        if (players[p].isAttacking && players[p].direction == 0){
+            if (players[p].directionFacing == 1){
+                if (players[p].x >= players[p].attackPos[0]){
+                    players[p].velocity[0] += ag;
+                    players[p].x += players[p].velocity[0];
+                } else{
+                    players[p].x = players[p].attackPos[0];
+                    players[p].isAttacking = false;
+                    players[p].velocity[0] = players[p].attackVelocity[0];
+                }
+            } else{
+                if (players[p].x <= players[p].attackPos[0]){
+                    players[p].velocity[0] -= ag;
+                    players[p].x += players[p].velocity[0];
+                } else{
+                    players[p].x = players[p].attackPos[0];
+                    players[p].isAttacking = false;
+                    players[p].velocity[0] = players[p].attackVelocity[0];
+                }
+            }
+        } else{
+            players[p].x += players[p].velocity[0];
         }
     }
 }
