@@ -8,7 +8,7 @@ var ctx = canvas.getContext("2d");
 
 var players = [];
 var stage;
-var g = -5;
+var g = 1;
 
 function main(){
     players.push(new Player("Player A", 0, "white"));
@@ -34,7 +34,7 @@ function placePlayers(){
         players[p].y = canvas.height-(stage.height+players[p].radius);
 
         // sink player slightly into ground
-        players[p].y += players[p].radius*2*0.08;
+        //players[p].y += players[p].radius*2*0.08;
     }
 }
 
@@ -65,10 +65,8 @@ function Player(name, id, color){
         this.direction = direction;
     }
 
-    this.jumping = false;
     this.jump = function(){
-        this.velocity[1] = 100;
-        this.jumping = true;
+        this.velocity[1] = -20;
     }
 }
 
@@ -109,13 +107,17 @@ function updateCanvas(){
 
 function movePlayers(){
     for (var p = 0; p < players.length; p++){
-        players[p].y -= players[p].velocity[1];
-        players[p].x -= players[p].velocity[0];
-        if (players[p].y > stage.y-players[p].radius){
-            players[p].jumping = false;
+        // if we will reach the ground on the next velocity step
+        if (players[p].y + players[p].velocity[1] + players[p].radius> stage.y){
+            // place player on the ground
+            players[p].y = stage.y - players[p].radius;
+            // stop movement
             players[p].velocity[1] = 0;
         } else{
-            players[p].velocity[1] =+ g;
+            // update velocity due to gravity
+            players[p].velocity[1] += g;
+            // update position based on new velocity
+            players[p].y += players[p].velocity[1];
         }
     }
 }
