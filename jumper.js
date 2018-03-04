@@ -21,8 +21,6 @@ stageImage.src = 'stage.gif';
 function main(){
     players.push(new Player("Player A", 0, "white"));
     players.push(new Player("Player B", 1, "green"));
-    players.push(new Player("C", 1, "red"));
-    players.push(new Player("D", 1, "orange"));
 
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
@@ -39,18 +37,34 @@ function main(){
 }
 
 function collisions(){
+    contests = []; // handle all collision contests
     for (var p = 0; p < players.length; p++){
         if (players[p].isAttacking){
             for (var e = 0; e < players.length; e++){
                 if (e != p){
                     if (overlap(players[p],players[e])){
-                        console.log(players[p].name+ " and " + players[e].name);
-                        players.splice(e,1);
+                        contests.push([players[p],players[e]]);
                     }
                 }
             }
         }
     }
+
+    if (contests.length != 0){
+        var winners = [];
+        var winner;
+        for (var i = 0; i < contests.length; i++){
+            var a = contests[i][0];
+            var b = contests[i][1];
+            // player which attacks first will win if 2 players attack at once
+            // player that attacks first will have lowest speed (since speed starts high)
+            if (a.isAttacking && b.isAttacking) winner = Math.abs(a.velocity[0]) < Math.abs(b.velocity[0]) ? a : b;
+            else winner = a.isAttacking ? a : b;
+            winners.push(winner);
+        }
+        players = winners;
+    }
+    
 }
 
 // return True if there is an overlap between player a and b
@@ -164,8 +178,12 @@ function canMove(p, d){
 
 function checkKey(e){
     e = e || window.event;
-    if (e.keyCode == '32' && !(players[0].isJumping)) players[0].jump();
     if (e.keyCode == '38' && !(players[1].isJumping)) players[1].jump();
+    if (e.keyCode == '66' && !(players[1].isAttacking)) players[1].attack();
+    if (e.keyCode == '90' && !(players[1].isAttacking)) players[1].move(-1);
+    if (e.keyCode == '88' && !(players[1].isAttacking)) players[1].move(0);
+
+    if (e.keyCode == '32' && !(players[0].isJumping)) players[0].jump();
     if (e.keyCode == '39' && !(players[0].isAttacking)) players[0].move(1);
     if (e.keyCode == '37' && !(players[0].isAttacking)) players[0].move(-1);
     if (e.keyCode == '40' && !(players[0].isAttacking)) players[0].move(0);
