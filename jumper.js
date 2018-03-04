@@ -22,9 +22,10 @@ function main(){
     players.push(new Player("Player A", 0, "white"));
     players.push(new Player("Player B", 1, "green"));
 
-    clouds.push(new Cloud(canvas.width+getRand(0,canvas.width/2,1),getRand(0,canvas.height,1),125,50,0.5));
-    clouds.push(new Cloud(canvas.width+getRand(0,canvas.width/2,1),getRand(0,canvas.height,1),200,50,0.5));
-    clouds.push(new Cloud(canvas.width+getRand(0,canvas.width/2,1),getRand(0,canvas.height,1),200,50,0.5));
+    clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
+    clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
+    clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
+    clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
     
     stage = new Stage(canvas.width*0.15,
                       canvas.height*0.9,
@@ -89,7 +90,7 @@ function Player(name, id, color){
 
     this.jump = function(){
         this.isJumping = true;
-        this.velocity[1] = -20;
+        this.velocity[1] = -14;
     }
     
     // 1 = right, -1 = left, 0 = neutral
@@ -171,12 +172,16 @@ function movePlayers(){
         // if we will reach the ground on the next velocity step
         // or also applies if we are currently on the ground due to gravity
         if (players[p].y + players[p].velocity[1] + players[p].radius >= stage.y){
-            // place player on the ground
-            players[p].y = stage.y - players[p].radius;
-            // stop movement
-            players[p].velocity[1] = 0;
-            players[p].isJumping = false;
-
+            // check if still on fighting stage
+            if (players[p].x < stage.x || players[p].x > stage.x+stage.width){
+                players[p].x = stage.x+players[p].radius;
+            } else{
+                // place player on the ground
+                players[p].y = stage.y - players[p].radius;
+                // stop movement
+                players[p].velocity[1] = 0;
+                players[p].isJumping = false;
+            }
         } else{
             // update velocity due to gravity
             players[p].velocity[1] += g;
@@ -252,13 +257,38 @@ function paintDanger(){
 }
 
 function paintPlayers(){
+    // paint the player tag
+
     for (var p = 0; p < players.length; p++){
+        paintTag(players[p],players[p].x-players[p].radius*2,players[p].y-players[p].radius*3);
         ctx.beginPath();
         ctx.arc(players[p].x,players[p].y,players[p].radius,0,2*Math.PI);
         ctx.fillStyle = players[p].color;
         ctx.fill();
         ctx.closePath();
     }
+}
+
+// x and y are coordinates of center
+function paintTag(p, x,y){
+    // paint the text
+    ctx.font = p.radius + "px Arial";
+    var fontWidth = ctx.measureText(p.name).width;
+    var fontHeight = p.radius * 1.286;
+
+    ctx.beginPath();
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(x-fontWidth*0.05,y-fontHeight*0.05,fontWidth*1.1,fontHeight*1.1);
+    ctx.closePath();
+
+    ctx.fillStyle = "white";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(p.name,x,y);
+//    ctx.beginPath();
+//    ctx.fillStyle = "rgba(0,0,0,0,0.5)"; 
+//    ctx.fillRect()
+//    ctx.closePath();
 }
 
 // Returns a random number in range min (incl.) max (excl.)
