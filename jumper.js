@@ -9,11 +9,22 @@ var ctx = canvas.getContext("2d");
 var players = [];
 var stage;
 var g = 1;
-var ag = -1; // attack gravity. acceleration back to starting pos after an attack
+var ag = -2; // attack gravity. acceleration back to starting pos after an attack
+
+var clouds = [];
+
+var dangerImage  = new Image();
+dangerImage.src = 'lava.gif';
+var stageImage = new Image();
+stageImage.src = 'stage.gif';
 
 function main(){
     players.push(new Player("Player A", 0, "white"));
     players.push(new Player("Player B", 1, "green"));
+
+    clouds.push(new Cloud(canvas.width+getRand(0,canvas.width/2,1),getRand(0,canvas.height,1),125,50,0.5));
+    clouds.push(new Cloud(canvas.width+getRand(0,canvas.width/2,1),getRand(0,canvas.height,1),200,50,0.5));
+    clouds.push(new Cloud(canvas.width+getRand(0,canvas.width/2,1),getRand(0,canvas.height,1),200,50,0.5));
     
     stage = new Stage(canvas.width*0.15,
                       canvas.height*0.9,
@@ -45,6 +56,16 @@ function Stage(x, y, width, height, color){
     this.width = width;
     this.height = height;
     this.color = color;
+    this.img = stageImage;
+}
+
+function Cloud(x, y, width, height, alpha){
+    this.x = x;
+    this.y = y
+    this.width = width;
+    this.height = height;
+    this.alpha = alpha;
+    this.velocity = -1;
 }
 
 
@@ -91,7 +112,7 @@ function Player(name, id, color){
             this.isAttacking = true;
             this.attackPos = [this.x,this.y];
             this.attackVelocity = [this.velocity[0],this.velocity[1]];
-            this.velocity[0] += 10*this.directionFacing;
+            this.velocity[0] += 20*this.directionFacing;
         }
         //this.radius *= 1.3;
     }
@@ -134,8 +155,10 @@ function updateCanvas(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     
     movePlayers();
+    moveClouds();
 
     paintBackdrop();
+    paintClouds();
     paintDanger();
     paintPlayers();
     paintStages();
@@ -189,11 +212,29 @@ function movePlayers(){
     }
 }
 
+function moveClouds(){
+    for (var c = 0; c < clouds.length; c++){
+        clouds[c].x += clouds[c].velocity;
+        if (clouds[c].x+clouds[c].width < 0){
+            clouds[c].x = canvas.width+getRand(0,canvas.width/2,1);
+        }
+    }
+}
+
 function paintStages(){
     ctx.beginPath();
-    ctx.fillStyle=stage.color;
+    ctx.fillStyle = ctx.createPattern(stage.img,"repeat");
     ctx.fillRect(stage.x, stage.y, stage.width, stage.height);
     ctx.closePath();
+}
+
+function paintClouds(){
+    for (var c = 0; c < clouds.length; c++){
+        ctx.beginPath();
+        ctx.fillStyle= "rgba(255,255,255," + clouds[c].alpha + ")";
+        ctx.fillRect(clouds[c].x,clouds[c].y,clouds[c].width,clouds[c].height);
+        ctx.closePath();
+    }
 }
 
 function paintBackdrop(){
@@ -205,7 +246,7 @@ function paintBackdrop(){
 
 function paintDanger(){
     ctx.beginPath();
-    ctx.fillStyle="red";
+    ctx.fillStyle = ctx.createPattern(dangerImage,"repeat");
     ctx.fillRect(0,canvas.height*0.95,canvas.width,canvas.height);
     ctx.closePath();
 }
@@ -217,6 +258,18 @@ function paintPlayers(){
         ctx.fillStyle = players[p].color;
         ctx.fill();
         ctx.closePath();
+    }
+}
+
+// Returns a random number in range min (incl.) max (excl.)
+// Third parameter specifies if you want an integer
+function getRand(min, max, wantInt){
+    if (wantInt){
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min)) + min;
+    } else{
+        return Math.random() * (max - min) + min;
     }
 }
 
