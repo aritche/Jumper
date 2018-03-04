@@ -21,6 +21,8 @@ stageImage.src = 'stage.gif';
 function main(){
     players.push(new Player("Player A", 0, "white"));
     players.push(new Player("Player B", 1, "green"));
+    players.push(new Player("C", 1, "red"));
+    players.push(new Player("D", 1, "orange"));
 
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
@@ -34,6 +36,39 @@ function main(){
                       "black");
     placePlayers();
     updateCanvas();
+}
+
+function collisions(){
+    for (var p = 0; p < players.length; p++){
+        if (players[p].isAttacking){
+            for (var e = 0; e < players.length; e++){
+                if (e != p){
+                    if (overlap(players[p],players[e])){
+                        console.log(players[p].name+ " and " + players[e].name);
+                        players.splice(e,1);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// return True if there is an overlap between player a and b
+// Collision equation inspired by https://stackoverflow.com/a/3269471
+function overlap(a, b){
+    startAX = a.x-a.radius;
+    startAY = a.y-a.radius;
+    endAX   = a.x+a.radius;
+    endAY   = a.y+a.radius;
+
+    startBX = b.x-b.radius;
+    startBY = b.y-b.radius;
+    endBX   = b.x+b.radius;
+    endBY   = b.y+b.radius;
+
+
+    return (startAX <= endBX && startBX <= endAX) 
+        && (startAY <= endBY && startBY <= endAY);
 }
 
 function placePlayers(){
@@ -77,6 +112,8 @@ function Player(name, id, color){
     this.color = color;
     this.x = 0;
     this.y = 0;
+
+    this.score = 0;
 
     this.radius = 20;
 
@@ -155,6 +192,7 @@ function createCanvas(w, h, color, id){
 function updateCanvas(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     
+    collisions();
     movePlayers();
     moveClouds();
 
