@@ -36,6 +36,7 @@ function main(){
     updateCanvas();
 }
 
+
 function collisions(){
     contests = []; // handle all collision contests
     for (var p = 0; p < players.length; p++){
@@ -58,7 +59,27 @@ function collisions(){
             var b = contests[i][1];
             // player which attacks first will win if 2 players attack at once
             // player that attacks first will have lowest speed (since speed starts high)
-            if (a.isAttacking && b.isAttacking) winner = Math.abs(a.velocity[0]) < Math.abs(b.velocity[0]) ? a : b;
+            if (a.isAttacking && b.isAttacking){
+                winner = Math.abs(a.velocity[0]) < Math.abs(b.velocity[0]) ? a : b;
+
+                // The following code handles the case:
+                /*
+                    A attacks first, but is now turning around. 
+                    Then B attacks. Ideally B should win since it is on the offensive.
+                    However due to rubberband acceleration, A might have higher speed
+                    and could thus be declared the winner.
+                */
+                // if B is on rebound and A is not, A should win regardless of speed
+                if (Math.sign(a.velocity[0]) == Math.sign(a.directionFacing)
+                    && (Math.sign(b.velocity[0] != Math.sign(b.directionFacing)))){
+                    winner = a;
+
+                // if A is on rebound and B is not, B should win regardless of speed
+                } else if (Math.sign(b.velocity[0]) == Math.sign(b.directionFacing)
+                    && (Math.sign(a.velocity[0] != Math.sign(a.directionFacing)))){
+                    winner = b;
+                }
+            }
             else winner = a.isAttacking ? a : b;
             winners.push(winner);
         }
