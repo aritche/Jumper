@@ -10,6 +10,9 @@ var players = [];
 var stage;
 var g = 1;
 var ag = -2; // attack gravity. acceleration back to starting pos after an attack
+var reward = 30; // reward for destroying enemy
+var punishment = -30; // punishment for being destroyed or falling off edge
+var timePunishment = 0;
 
 var clouds = [];
 
@@ -19,9 +22,11 @@ var stageImage = new Image();
 stageImage.src = 'stage.gif';
 
 function main(){
+    players = [];
     players.push(new Player("Player A", 0, "white"));
     players.push(new Player("Player B", 1, "green"));
 
+    clouds = [];
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
@@ -54,6 +59,7 @@ function collisions(){
     if (contests.length != 0){
         var winners = [];
         var winner;
+        var loser;
         for (var i = 0; i < contests.length; i++){
             var a = contests[i][0];
             var b = contests[i][1];
@@ -81,6 +87,11 @@ function collisions(){
                 }
             }
             else winner = a.isAttacking ? a : b;
+            loser = winner == a ? b : a;
+
+            winner.score += reward;
+            loser.score += punishment;
+
             winners.push(winner);
         }
         players = winners;
@@ -116,6 +127,9 @@ function placePlayers(){
         }
         players[p].y = canvas.height-(stage.height+players[p].radius);
 
+        players[p].startX = players[p].x;
+        players[p].startY = players[p].y;
+
         // sink player slightly into ground
         //players[p].y += players[p].radius*2*0.08;
     }
@@ -147,6 +161,8 @@ function Player(name, id, color){
     this.color = color;
     this.x = 0;
     this.y = 0;
+    this.startX = 0;
+    this.startY = 0;
 
     this.score = 0;
 
@@ -204,6 +220,7 @@ function canMove(p, d){
 
 function checkKey(e){
     e = e || window.event;
+    
     if (e.keyCode == '38') players[1].jump(); 
     if (e.keyCode == '66') players[1].attack();
     if (e.keyCode == '90') players[1].move(-1); 
@@ -238,6 +255,7 @@ function updateCanvas(){
     
     collisions();
     movePlayers();
+    updatePlayerScores();
     moveClouds();
 
     paintBackdrop();
@@ -249,14 +267,21 @@ function updateCanvas(){
     requestAnimationFrame(updateCanvas);
 }
 
+function updatePlayerScores(){
+    for (var p = 0; p < players.length; p++){
+        players[p].score += timePunishment;
+    }
+}
+
 function movePlayers(){
     for (var p = 0; p < players.length; p++){
         // if we will reach the ground on the next velocity step
         // or also applies if we are currently on the ground due to gravity
         if (players[p].y + players[p].velocity[1] + players[p].radius >= stage.y){
-            // check if still on fighting stage
+            // check if fell off fighting stage
             if (players[p].x < stage.x || players[p].x > stage.x+stage.width){
-                players[p].x = stage.x+players[p].radius;
+                players[p].score += punishment;
+                players[p].x = players[p].startX;
             } else{
                 // place player on the ground
                 players[p].y = stage.y - players[p].radius;
@@ -367,6 +392,10 @@ function paintTag(p, x,y){
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillText(p.name,x,y);
+    if (p.score > 0)  ctx.fillStyle = "green";
+    if (p.score == 0) ctx.fillStyle = "white";
+    if (p.score < 0)  ctx.fillStyle = "red";
+    ctx.fillText(p.score,x+fontWidth/2,y-fontHeight );
 //    ctx.beginPath();
 //    ctx.fillStyle = "rgba(0,0,0,0,0.5)"; 
 //    ctx.fillRect()
