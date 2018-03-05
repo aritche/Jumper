@@ -161,8 +161,10 @@ function Player(name, id, color){
     this.isJumping = false;
 
     this.jump = function(){
-        this.isJumping = true;
-        this.velocity[1] = -14;
+        if (!this.isJumping && !this.isAttacking){
+            this.isJumping = true;
+            this.velocity[1] = -14;
+        }
     }
     
     // 1 = right, -1 = left, 0 = neutral
@@ -170,10 +172,12 @@ function Player(name, id, color){
     this.directionFacing = 0; // direction of facing currently
 
     this.move = function(d){
-        this.velocity[0] = 5*d;
-        this.direction = d;
-        if (d != 0){
-            this.directionFacing = d;
+        if (!this.isAttacking){
+            this.velocity[0] = 5*d;
+            this.direction = d;
+            if (d != 0){
+                this.directionFacing = d;
+            }
         }
     }
 
@@ -181,7 +185,8 @@ function Player(name, id, color){
     this.attackPos = [0,0]; // pullback coordinates after an attack
     this.attackVelocity = [0,0]; // original velocity before attack 
     this.attack = function(){
-        if (this.direction == 0){ // can only attack while not moving
+        // can only attack while not moving and not already attacking
+        if (this.direction == 0 && !this.isAttacking){ 
             this.isAttacking = true;
             this.attackPos = [this.x,this.y];
             this.attackVelocity = [this.velocity[0],this.velocity[1]];
@@ -199,16 +204,16 @@ function canMove(p, d){
 
 function checkKey(e){
     e = e || window.event;
-    if (e.keyCode == '38' && !(players[1].isJumping) && !(players[1].isAttacking)) players[1].jump();
-    if (e.keyCode == '66' && !(players[1].isAttacking)) players[1].attack();
-    if (e.keyCode == '90' && !(players[1].isAttacking)) players[1].move(-1);
-    if (e.keyCode == '88' && !(players[1].isAttacking)) players[1].move(0);
+    if (e.keyCode == '38') players[1].jump(); 
+    if (e.keyCode == '66') players[1].attack();
+    if (e.keyCode == '90') players[1].move(-1); 
+    if (e.keyCode == '88') players[1].move(0);
 
-    if (e.keyCode == '32' && !(players[0].isJumping) && !(players[0].isAttacking)) players[0].jump();
-    if (e.keyCode == '39' && !(players[0].isAttacking)) players[0].move(1);
-    if (e.keyCode == '37' && !(players[0].isAttacking)) players[0].move(-1);
-    if (e.keyCode == '40' && !(players[0].isAttacking)) players[0].move(0);
-    if (e.keyCode == '65' && !(players[0].isAttacking)) players[0].attack();
+    if (e.keyCode == '32') players[0].jump();
+    if (e.keyCode == '39') players[0].move(1);
+    if (e.keyCode == '37') players[0].move(-1);
+    if (e.keyCode == '40') players[0].move(0);
+    if (e.keyCode == '65') players[0].attack();
 }
 document.onkeydown = checkKey;
 
