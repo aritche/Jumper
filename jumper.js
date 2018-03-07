@@ -255,6 +255,7 @@ function updateCanvas(){
     
     collisions();
     movePlayers();
+    botAction();
     updatePlayerScores();
     moveClouds();
 
@@ -265,6 +266,12 @@ function updateCanvas(){
     paintStages();
 
     requestAnimationFrame(updateCanvas);
+}
+
+function botAction(){
+    if (players.length >= 2){
+        players[1].move(-1);
+    }
 }
 
 function updatePlayerScores(){
