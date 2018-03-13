@@ -14,6 +14,8 @@ var reward = 30; // reward for destroying enemy
 var punishment = -30; // punishment for being destroyed or falling off edge
 var timePunishment = 0;
 
+var gameOver = false;
+
 var clouds = [];
 
 var dangerImage  = new Image();
@@ -22,6 +24,11 @@ var stageImage = new Image();
 stageImage.src = 'stage.gif';
 
 function main(){
+    resetWorld();
+}
+
+// resets the world and all its players
+function resetWorld(){
     players = [];
     players.push(new Player("Player A", 0, "white"));
     players.push(new Player("Player B", 1, "green"));
@@ -37,10 +44,12 @@ function main(){
                       canvas.width*0.70,
                       canvas.height*0.1, 
                       "black");
+
+    gameOver = false;
+
     placePlayers();
     updateCanvas();
 }
-
 
 function collisions(){
     contests = []; // handle all collision contests
@@ -93,6 +102,8 @@ function collisions(){
             loser.score += punishment;
 
             winners.push(winner);
+
+            gameOver = true;
         }
         players = winners;
     }
@@ -265,7 +276,11 @@ function updateCanvas(){
     paintPlayers();
     paintStages();
 
-    requestAnimationFrame(updateCanvas);
+    if (!gameOver){
+        requestAnimationFrame(updateCanvas);
+    } else{
+        resetWorld();
+    }
 }
 
 function botAction(){
@@ -289,6 +304,7 @@ function movePlayers(){
             if (players[p].x < stage.x || players[p].x > stage.x+stage.width){
                 players[p].score += punishment;
                 players[p].x = players[p].startX;
+                gameOver = true;
             } else{
                 // place player on the ground
                 players[p].y = stage.y - players[p].radius;
