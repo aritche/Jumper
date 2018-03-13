@@ -15,6 +15,7 @@ var punishment = -30; // punishment for being destroyed or falling off edge
 var timePunishment = 0;
 
 var gameOver = false;
+var time = 0; // elapsed time in seconds
 
 var clouds = [];
 
@@ -45,6 +46,7 @@ function resetWorld(){
                       canvas.height*0.1, 
                       "black");
 
+    time = 0;
     gameOver = false;
 
     placePlayers();
@@ -276,10 +278,10 @@ function updateCanvas(){
     paintPlayers();
     paintStages();
 
-    if (!gameOver){
-        requestAnimationFrame(updateCanvas);
-    } else{
+    if (gameOver || time == 5){
         resetWorld();
+    } else{
+        requestAnimationFrame(updateCanvas);
     }
 }
 
@@ -304,7 +306,6 @@ function movePlayers(){
             if (players[p].x < stage.x || players[p].x > stage.x+stage.width){
                 players[p].score += punishment;
                 players[p].x = players[p].startX;
-                gameOver = true;
             } else{
                 // place player on the ground
                 players[p].y = stage.y - players[p].radius;
