@@ -6,7 +6,6 @@ var requestAnimationFrame = window.requestAnimationFrame ||
 var canvas = createCanvas(500, 250, 'white', 'gameArea');
 var ctx = canvas.getContext("2d");
 
-var players = [];
 var stage;
 var g = 1;
 var ag = -2; // attack gravity. acceleration back to starting pos after an attack
@@ -14,15 +13,18 @@ var reward = 30; // reward for destroying enemy
 var punishment = -30; // punishment for being destroyed or falling off edge
 var timePunishment = 0;
 
-var gameOver = false;
 var time = 0; // elapsed time in seconds
 
 var clouds = [];
+var colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black', 'white'];
 
 var dangerImage  = new Image();
 dangerImage.src = 'lava.gif';
 var stageImage = new Image();
 stageImage.src = 'stage.gif';
+
+var contests = [];
+var numContests = 10;
 
 function main(){
     resetWorld();
@@ -30,9 +32,10 @@ function main(){
 
 // resets the world and all its players
 function resetWorld(){
-    players = [];
-    players.push(new Player("Player A", 0, "white"));
-    players.push(new Player("Player B", 1, "green"));
+    contests = [];
+    for (var c = 0; c < numContests; c++){
+        contests.push(new Contest([new Network([2,5,5]), new Network([2,5,5])]));
+    }
 
     clouds = [];
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
@@ -47,33 +50,33 @@ function resetWorld(){
                       "black");
 
     time = 0;
-    gameOver = false;
 
     placePlayers();
     updateCanvas();
 }
 
-function collisions(){
-    contests = []; // handle all collision contests
+function collisions(contest){
+    disputes = []; // handle all collision disputes
+    var players = contest.players;
     for (var p = 0; p < players.length; p++){
         if (players[p].isAttacking){
             for (var e = 0; e < players.length; e++){
                 if (e != p){
                     if (overlap(players[p],players[e])){
-                        contests.push([players[p],players[e]]);
+                        disputes.push([players[p],players[e]]);
                     }
                 }
             }
         }
     }
 
-    if (contests.length != 0){
+    if (disputes.length != 0){
         var winners = [];
         var winner;
         var loser;
-        for (var i = 0; i < contests.length; i++){
-            var a = contests[i][0];
-            var b = contests[i][1];
+        for (var i = 0; i < disputes.length; i++){
+            var a = disputes[i][0];
+            var b = disputes[i][1];
             // player which attacks first will win if 2 players attack at once
             // player that attacks first will have lowest speed (since speed starts high)
             if (a.isAttacking && b.isAttacking){
@@ -105,9 +108,10 @@ function collisions(){
 
             winners.push(winner);
 
-            gameOver = true;
+            contest.isOver = true;
+            contest.winner = winner;
         }
-        players = winners;
+        //players = winners;
     }
     
 }
@@ -131,6 +135,7 @@ function overlap(a, b){
 }
 
 function placePlayers(){
+    var players = contests[0].players;
     for (var p = 0; p < players.length; p++){
         players[p].x = stage.x+players[p].radius+stage.width*(p/(players.length-1));
         
@@ -166,9 +171,27 @@ function Cloud(x, y, width, height, alpha){
     this.velocity = -1;
 }
 
+// A Contest (competition, game, etc.) between networks.length players
+// networks is an array of neural networks. e.g. player 0 is assigned networks[0]
+function Contest(networks){
+    // whether the Contest has ended
+    this.isOver = false;
+
+    // A list of players in the contest
+    this.players = [];
+    for (var p = 0; p < networks.length; p++){
+        this.players.push(new Player("Player " + p, 0, colors[p%colors.length], networks[p]));
+    }
+
+    this.networks = networks;
+
+    // Who won the contest
+    this.winner;
+}
+
 
 // direction 'n' = neutral
-function Player(name, id, color){
+function Player(name, id, color, network){
     this.name = name;
     this.id = id;
     this.color = color;
@@ -223,6 +246,9 @@ function Player(name, id, color){
         }
         //this.radius *= 1.3;
     }
+
+    // Neural network used by the player
+    this.network = network;
 }
 
 
@@ -233,6 +259,8 @@ function canMove(p, d){
 
 function checkKey(e){
     e = e || window.event;
+
+    var players = contests[0].players;
     
     if (e.keyCode == '38') players[1].jump(); 
     if (e.keyCode == '66') players[1].attack();
@@ -266,10 +294,14 @@ function createCanvas(w, h, color, id){
 function updateCanvas(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     
-    collisions();
-    movePlayers();
-    botAction();
-    updatePlayerScores();
+    for (var c = 0; c < contests.length; c++){
+        collisions(contests[c]);
+        movePlayers(contests[c]);
+        firstPlayerAction(contests[c]);
+        secondPlayerAction(contests[c]);
+        updatePlayerScores(contests[c]);
+    }
+
     moveClouds();
 
     paintBackdrop();
@@ -278,26 +310,54 @@ function updateCanvas(){
     paintPlayers();
     paintStages();
 
-    if (gameOver || time == 5){
+    if (time >= 5){
         resetWorld();
     } else{
         requestAnimationFrame(updateCanvas);
     }
 }
 
-function botAction(){
-    if (players.length >= 2){
-        players[1].move(-1);
+function secondPlayerAction(contest){
+    var n = contest.networks[0];
+    var out = n.feedforward([getRand(0,10,1), getRand(0,10,1)]);
+
+    var max = 0;
+    var maxI = 0;
+    for (var i = 0; i < out.length; i++){
+        if (out[i] > max){
+            max = out[i];
+            maxI = i;
+        }   
+    }
+
+    if (maxI == 0){
+        contest.players[1].move(-1);
+    } else if (maxI == 1){
+        contest.players[1].move(1);
+    } else if (maxI == 2){
+        contest.players[1].move(0);
+    } else if (maxI == 3){
+        contest.players[1].jump();
+    } else{
+        contest.players[1].attack();
     }
 }
 
-function updatePlayerScores(){
+function firstPlayerAction(contest){
+    if (contest.players.length >= 2){
+        contest.players[1].move(1);
+    }
+}
+
+function updatePlayerScores(contest){
+    var players = contest.players;
     for (var p = 0; p < players.length; p++){
         players[p].score += timePunishment;
     }
 }
 
-function movePlayers(){
+function movePlayers(contest){
+    var players = contest.players;
     for (var p = 0; p < players.length; p++){
         // if we will reach the ground on the next velocity step
         // or also applies if we are currently on the ground due to gravity
@@ -389,7 +449,7 @@ function paintDanger(){
 
 function paintPlayers(){
     // paint the player tag
-
+    players = contests[0].players;
     for (var p = 0; p < players.length; p++){
         paintTag(players[p],players[p].x-players[p].radius*2,players[p].y-players[p].radius*3);
         ctx.beginPath();
@@ -437,5 +497,109 @@ function getRand(min, max, wantInt){
         return Math.random() * (max - min) + min;
     }
 }
+
+
+
+
+
+// =============== NEURAL NETWORKS =================
+// =================================================
+
+// numNodes = [a, b, c] where a = number of nodes in layer 0, etc.
+function Network(numNodes){
+    this.value       = 0; // value of the network (for genetic algorithm)
+    this.nodes       = genNodes(numNodes);
+    this.weights     = genWeights(this.nodes);
+    this.numLayers   = numNodes.length;
+    this.numNodes    = numNodes;
+    this.feedforward = function(inputs){
+        // adjust value for all nodes in first layer to the input value
+        for (var n = 0; n < this.nodes[0].length; n++){
+            this.nodes[0][n].value = inputs[n];
+        }
+
+        // for all layers (except for final layer)
+        for (var l = 0; l < this.numLayers-1;  l++){
+            // for all nodes in next layer
+            for (var n = 0; n < this.numNodes[l+1]; n++){
+                var total = 0;
+                // for all nodes in current layer
+                for (var np = 0; np < this.numNodes[l]; np++){
+                    total += this.nodes[l][np].value * this.nodes[l][np].weights[n];
+                }
+                this.nodes[l+1][n].value = sigmoid(total);
+            }
+        }
+
+        // for each node in the last layer
+        var output = [];
+        for (var n = 0; n < this.nodes[this.numLayers-1].length; n++){
+            output.push(this.nodes[this.numLayers-1][n].value);
+            //console.log("Output: " + this.nodes[this.numLayers-1][n].value);
+        }
+        return output;
+    }
+
+    // Set the weight between node in:
+    //  layer = aLayer, node = aNode AND layer = aLayer+1, node = bNode
+    this.setWeight = function(aLayer, aNode, bNode, w){
+        this.nodes[aLayer][aNode].weights[bNode] = w;
+    }
+}
+
+function sigmoid(x){
+    return 1/(1+Math.pow(Math.E,-x)); 
+}
+
+function Weight(a,b, w){
+    this.start  = a;
+    this.end    = b;
+    this.weight = w;
+}
+
+function Node(layer){
+    this.layer = layer;
+    this.weights = []; 
+    this.value = 0;
+    this.ID = []; //ID = [a, b]; a = layer, b = node number
+}
+
+function genNodes(numNodes){
+    var nodes = [];
+    for (var layer = 0; layer < numNodes.length; layer++){
+        if (!nodes[layer]) nodes[layer] = [];
+        for (var node = 0; node < numNodes[layer]; node++){
+            nodes[layer].push(new Node(layer));
+        }
+    }
+    return nodes;
+}
+
+function genWeights(nodes){
+    // for all layers except for last layer
+    for (var l = 0; l < nodes.length-1; l++){
+        // for all nodes in current layer
+        for (var n = 0; n < nodes[l].length; n++){
+            // for all nodes in next layer
+            for (var nl = 0; nl < nodes[l+1].length; nl++){
+                // push weight between n and nl;
+                nodes[l][n].weights.push(getRand(-1,1,0));
+            }
+        }
+    }
+}
+
+function randWeights(numNodes){
+    var w = [];
+    for (var layer = 0; layer < numNodes.length; layer++){
+        if (!w[layer]) w[layer] = [];
+        for (var node = 0; node < numNodes[layer]; node++){
+            w[layer].push(0);
+        }
+    }
+    return w;
+}
+
+
 
 main();
