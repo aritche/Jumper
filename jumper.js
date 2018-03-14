@@ -34,7 +34,7 @@ function main(){
 function resetWorld(){
     contests = [];
     for (var c = 0; c < numContests; c++){
-        contests.push(new Contest([new Network([2,5,5]), new Network([2,5,5])]));
+        contests.push(new Contest([new Network([4,5,5]), new Network([4,5,5])]));
     }
 
     clouds = [];
@@ -295,11 +295,13 @@ function updateCanvas(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     
     for (var c = 0; c < contests.length; c++){
-        collisions(contests[c]);
-        movePlayers(contests[c]);
-        firstPlayerAction(contests[c]);
-        secondPlayerAction(contests[c]);
-        updatePlayerScores(contests[c]);
+        if (!contests[c].isOver){
+            collisions(contests[c]);
+            movePlayers(contests[c]);
+            firstPlayerAction(contests[c]);
+            secondPlayerAction(contests[c]);
+            updatePlayerScores(contests[c]);
+        }
     }
 
     moveClouds();
@@ -319,40 +321,44 @@ function updateCanvas(){
 
 function secondPlayerAction(contest){
     var n = contest.networks[0];
-    var out = n.feedforward([getRand(0,10,1), getRand(0,10,1)]);
-
-    var max = 0;
-    var maxI = 0;
-    for (var i = 0; i < out.length; i++){
-        if (out[i] > max){
-            max = out[i];
-            maxI = i;
-        }   
-    }
-
-    if (maxI == 0){
-        contest.players[1].move(-1);
-    } else if (maxI == 1){
-        contest.players[1].move(1);
-    } else if (maxI == 2){
-        contest.players[1].move(0);
-    } else if (maxI == 3){
-        contest.players[1].jump();
-    } else{
-        contest.players[1].attack();
-    }
+    var out = n.feedforward([contest.players[0].x, contest.players[0].y, contest.players[1].x, contest.players[1].y]);
+    takeAction(out, contest.players[1]);
 }
 
 function firstPlayerAction(contest){
-    if (contest.players.length >= 2){
-        contest.players[1].move(1);
-    }
+    var n = contest.networks[0];
+    var out = n.feedforward([contest.players[1].x, contest.players[1].y, contest.players[0].x, contest.players[0].y]);
+    takeAction(out, contest.players[0]);
 }
 
 function updatePlayerScores(contest){
     var players = contest.players;
     for (var p = 0; p < players.length; p++){
         players[p].score += timePunishment;
+    }
+}
+
+// given an output of a neural network, make player do an action
+function takeAction(output, player){
+    var max = 0;
+    var maxI = 0;
+    for (var i = 0; i < output.length; i++){
+        if (output[i] > max){
+            max = output[i];
+            maxI = i;
+        }   
+    }
+
+    if (maxI == 0){
+        player.move(-1);
+    } else if (maxI == 1){
+        player.move(1);
+    } else if (maxI == 2){
+        player.move(0);
+    } else if (maxI == 3){
+        player.jump();
+    } else{
+        player.attack();
     }
 }
 
