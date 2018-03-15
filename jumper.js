@@ -24,7 +24,7 @@ var stageImage = new Image();
 stageImage.src = 'stage.gif';
 
 var contests = [];
-var numContests = 100;
+var numContests = 300;
 
 function main(){
     setInterval(function(){time += 1}, 1000);
