@@ -27,11 +27,14 @@ var contests = [];
 var numContests = 10;
 
 function main(){
+    setInterval(function(){time += 1}, 1000);
     resetWorld();
 }
 
 // resets the world and all its players
 function resetWorld(){
+    time = 0;
+
     contests = [];
     for (var c = 0; c < numContests; c++){
         contests.push(new Contest([new Network([4,5,5]), new Network([4,5,5])]));
@@ -49,7 +52,6 @@ function resetWorld(){
                       canvas.height*0.1, 
                       "black");
 
-    time = 0;
 
     placePlayers();
     updateCanvas();
@@ -291,7 +293,9 @@ function createCanvas(w, h, color, id){
 }
 
 
+var requestID;
 function updateCanvas(){
+    requestID = undefined;
     ctx.clearRect(0,0,canvas.width,canvas.height);
     
     for (var c = 0; c < contests.length; c++){
@@ -311,6 +315,7 @@ function updateCanvas(){
     paintDanger();
     paintPlayers();
     paintStages();
+    paintTime();
 
     if (time >= 5){
         resetWorld();
@@ -318,6 +323,7 @@ function updateCanvas(){
         requestAnimationFrame(updateCanvas);
     }
 }
+
 
 function secondPlayerAction(contest){
     var n = contest.networks[0];
@@ -343,7 +349,7 @@ function takeAction(output, player){
     var max = 0;
     var maxI = 0;
     for (var i = 0; i < output.length; i++){
-        if (output[i] > max){
+        if (output[i] >= max){
             max = output[i];
             maxI = i;
         }   
@@ -427,6 +433,16 @@ function paintStages(){
     ctx.beginPath();
     ctx.fillStyle = ctx.createPattern(stage.img,"repeat");
     ctx.fillRect(stage.x, stage.y, stage.width, stage.height);
+    ctx.closePath();
+}
+
+function paintTime(){
+    ctx.beginPath();
+    ctx.font = "30px Arial";
+    ctx.fillStyle = "black";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "top";
+    ctx.fillText("Time: " + time,canvas.width*0.98, canvas.height*0.02);
     ctx.closePath();
 }
 
