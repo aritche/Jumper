@@ -24,7 +24,7 @@ var stageImage = new Image();
 stageImage.src = 'stage.gif';
 
 var contests = [];
-var numContests = 10;
+var numContests = 100;
 
 function main(){
     setInterval(function(){time += 1}, 1000);
@@ -55,6 +55,21 @@ function resetWorld(){
 
     placePlayers();
     updateCanvas();
+}
+
+function getBestPlayer(){
+    var bestScore;
+    var bestPlayer;
+    for (var c = 0; c < contests.length; c++){
+        var players = contests[c].players;
+        for (var p = 0; p < players.length; p++){
+            if (bestScore == null || players[p].score >= bestScore){
+                bestScore = players[p].score;
+                bestPlayer = players[p];
+            }
+        }
+    }
+    return bestPlayer;
 }
 
 function collisions(contest){
@@ -318,6 +333,7 @@ function updateCanvas(){
     paintTime();
 
     if (time >= 5){
+        console.log(getBestPlayer());
         resetWorld();
     } else{
         requestAnimationFrame(updateCanvas);
