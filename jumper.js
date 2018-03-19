@@ -40,6 +40,11 @@ function resetWorld(){
         contests.push(new Contest([new Network([4,5,5]), new Network([4,5,5])]));
     }
 
+    for (var n = 0; n < 2; n++){
+        canv = createCanvas(100,100,"white","gameAreas"+n);
+        contests[0].networks[n].draw(canv); 
+    }
+
     clouds = [];
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
@@ -583,6 +588,61 @@ function Network(numNodes){
     this.setWeight = function(aLayer, aNode, bNode, w){
         this.nodes[aLayer][aNode].weights[bNode] = w;
     }
+
+    
+    this.draw = function(canv){
+        this.locations = [];
+        var locations = this.locations;
+        var context = canv.getContext("2d");
+        var nn = this; 
+        for (var layer = 0; layer < nn.nodes.length; layer++){
+            if (!locations[layer]) locations[layer] = [];
+            for (var node = 0; node < nn.nodes[layer].length; node++){
+                locations[layer].push([(canv.width*0.1)+(canv.width*0.8)*(layer/(nn.nodes.length-1)),(canv.height*0.15)+(canv.height*0.7)*(node/(nn.nodes[layer].length-1))]);
+                drawNode((canv.width*0.1)+(canv.width*0.8)*(layer/(nn.nodes.length-1)),(canv.height*0.15)+(canv.height*0.7)*(node/(nn.nodes[layer].length-1)),10,context);
+            }
+        }
+
+        var max;
+        var min;
+        for (var layer = 0; layer < nn.numLayers; layer++){
+            for (var n = 0; n < nn.nodes[layer].length; n++){
+                for (var w = 0; w < nn.nodes[layer][n].weights.length; w++){
+                    if (!max || nn.nodes[layer][n].weights[w] >= max) max = nn.nodes[layer][n].weights[w];
+                    if (!min || nn.nodes[layer][n].weights[w] <= min) min = nn.nodes[layer][n].weights[w];
+                }
+            }
+        }
+        
+        for (var layer = 0; layer < nn.numLayers-1; layer++){
+            var adj = layer+1;
+            for (var a = 0; a < nn.nodes[layer].length; a++){
+                for (var b = 0; b < nn.nodes[adj].length; b++){
+                    // adding 0.03 at the end so min weight isn't invisible
+                    var alpha = (nn.nodes[layer][a].weights[b]-min)/(max-min)+0.03;
+                    //console.log("Alpha = " + alpha);
+                    drawConnection(locations[layer][a][0],locations[layer][a][1],locations[adj][b][0], locations[adj][b][1],alpha, context);
+                }
+            }
+        }
+    }
+}
+
+function drawNode(x,y,radius, context){
+    context.beginPath();
+    context.arc(x,y,radius,0,2*Math.PI);
+    context.fillStyle = "red";
+    context.fill();
+    context.closePath();
+}
+
+function drawConnection(ax,ay,bx,by,intensity, context){
+    context.beginPath();
+    context.strokeStyle= "rgba(0,0,0," + intensity + ")";
+    context.moveTo(ax,ay);
+    context.lineTo(bx,by);
+    context.stroke();
+    context.closePath();
 }
 
 function sigmoid(x){
