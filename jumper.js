@@ -50,24 +50,14 @@ function resetWorld(){
         networks = reproduce(networks);
     }
 
-    // Generate the contests via the created networks
-        /*
-            for contest in contests:
-                for some (networkA,networkB) in networks:
-                    contest(networkA,networkB)
-                    eliminate (networkA,networkB) from possible choices,
-                        but don't remove from 'networks' array
-            NOTE: Does javascript clone Network objects when assigningt o
-                  variables, or does it just pass the reference?
-        */
-
-    // deep clone the networks list
+    // Create contests
     networks = shuffle(networks);
     contests = [];
     for (var c = 0; c < numContests; c++){
         chosenNetworks = [];
         for (var n = 0; n < playersPerContest; n++){
             chosenNetworks.push(networks[c*playersPerContest+n]);    
+            console.log(c*playersPerContest+n);
         }
         contests.push(new Contest(chosenNetworks));
     }
