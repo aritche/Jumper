@@ -40,6 +40,7 @@ function resetWorld(){
 
     time = 0;
 
+    // Update the list of networks
     if (generation == 1){
         // Generate networks
         for (var n = 0; n < numContests*playersPerContest; n++){
@@ -89,7 +90,7 @@ function cloneNetwork(n){
 
 // shuffle array via Fisher-Yates shuffle
 function shuffle(a){
-    var index = 0;
+    var index = a.length;
     while (index != 0){
         r = getRand(0,index,1);
         index--;
@@ -103,6 +104,7 @@ function shuffle(a){
 }
 
 function reproduce(n){
+    // Make sure the scores of each network are zero before passing back
     return n;
 }
 
