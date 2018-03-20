@@ -57,7 +57,6 @@ function resetWorld(){
         chosenNetworks = [];
         for (var n = 0; n < playersPerContest; n++){
             chosenNetworks.push(networks[c*playersPerContest+n]);    
-            console.log(c*playersPerContest+n);
         }
         contests.push(new Contest(chosenNetworks));
     }
@@ -113,8 +112,8 @@ function getBestPlayer(){
     for (var c = 0; c < contests.length; c++){
         var players = contests[c].players;
         for (var p = 0; p < players.length; p++){
-            if (bestScore == null || players[p].score >= bestScore){
-                bestScore = players[p].score;
+            if (bestScore == null || players[p].network.score >= bestScore){
+                bestScore = players[p].network.score;
                 bestPlayer = players[p];
             }
         }
@@ -170,8 +169,8 @@ function collisions(contest){
             else winner = a.isAttacking ? a : b;
             loser = winner == a ? b : a;
 
-            winner.score += reward;
-            loser.score += punishment;
+            winner.network.score += reward;
+            loser.network.score += punishment;
 
             winners.push(winner);
 
@@ -266,8 +265,6 @@ function Player(name, id, color, network){
     this.y = 0;
     this.startX = 0;
     this.startY = 0;
-
-    this.score = 0;
 
     this.radius = 20;
 
@@ -406,7 +403,7 @@ function firstPlayerAction(contest){
 function updatePlayerScores(contest){
     var players = contest.players;
     for (var p = 0; p < players.length; p++){
-        players[p].score += timePunishment;
+        players[p].network.score += timePunishment;
     }
 }
 
@@ -442,7 +439,7 @@ function movePlayers(contest){
         if (players[p].y + players[p].velocity[1] + players[p].radius >= stage.y){
             // check if fell off fighting stage
             if (players[p].x < stage.x || players[p].x > stage.x+stage.width){
-                players[p].score += punishment;
+                players[p].network.score += punishment;
                 players[p].x = players[p].startX;
             } else{
                 // place player on the ground
@@ -564,10 +561,10 @@ function paintTag(p, x,y){
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillText(p.name,x,y);
-    if (p.score > 0)  ctx.fillStyle = "green";
-    if (p.score == 0) ctx.fillStyle = "white";
-    if (p.score < 0)  ctx.fillStyle = "red";
-    ctx.fillText(p.score,x+fontWidth/2,y-fontHeight );
+    if (p.network.score > 0)  ctx.fillStyle = "green";
+    if (p.network.score == 0) ctx.fillStyle = "white";
+    if (p.network.score < 0)  ctx.fillStyle = "red";
+    ctx.fillText(p.network.score,x+fontWidth/2,y-fontHeight );
 //    ctx.beginPath();
 //    ctx.fillStyle = "rgba(0,0,0,0,0.5)"; 
 //    ctx.fillRect()
@@ -595,7 +592,7 @@ function getRand(min, max, wantInt){
 
 // numNodes = [a, b, c] where a = number of nodes in layer 0, etc.
 function Network(numNodes){
-    this.value       = 0; // value of the network (for genetic algorithm)
+    this.score = 0; // value of the network (for genetic algorithm)
     this.nodes       = genNodes(numNodes);
     this.weights     = genWeights(this.nodes);
     this.numLayers   = numNodes.length;
