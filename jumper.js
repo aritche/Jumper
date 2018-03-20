@@ -14,6 +14,7 @@ var punishment = -30; // punishment for being destroyed or falling off edge
 var timePunishment = 0;
 
 var time = 0; // elapsed time in seconds
+var generation = 0;
 
 var clouds = [];
 var colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black', 'white'];
@@ -23,8 +24,10 @@ dangerImage.src = 'lava.gif';
 var stageImage = new Image();
 stageImage.src = 'stage.gif';
 
-var contests = [];
+var contests = []; // a list of all current contests
 var numContests = 300;
+var playersPerContest = 2;
+var networks = []; // a list of all current networks
 
 function main(){
     setInterval(function(){time += 1}, 1000);
@@ -33,15 +36,44 @@ function main(){
 
 // resets the world and all its players
 function resetWorld(){
+    generation++;
+
     time = 0;
 
-    contests = [];
-    for (var c = 0; c < numContests; c++){
-        contests.push(new Contest([new Network([4,5,5]), new Network([4,5,5])]));
+    if (generation == 1){
+        // Generate networks
+        for (var n = 0; n < numContests*playersPerContest; n++){
+            networks.push(new Network([4,5,5]));
+        }
+    } else{
+        // Reproduce networks;
+        networks = reproduce(networks);
     }
 
-    for (var n = 0; n < 2; n++){
-        canv = createCanvas(100,100,"white","network"+n);
+    // Generate the contests via the created networks
+        /*
+            for contest in contests:
+                for some (networkA,networkB) in networks:
+                    contest(networkA,networkB)
+                    eliminate (networkA,networkB) from possible choices,
+                        but don't remove from 'networks' array
+            NOTE: Does javascript clone Network objects when assigningt o
+                  variables, or does it just pass the reference?
+        */
+
+    // deep clone the networks list
+    networks = shuffle(networks);
+    contests = [];
+    for (var c = 0; c < numContests; c++){
+        chosenNetworks = [];
+        for (var n = 0; n < playersPerContest; n++){
+            chosenNetworks.push(networks[c*playersPerContest+n]);    
+        }
+        contests.push(new Contest(chosenNetworks));
+    }
+
+    for (var n = 0; n < playersPerContest; n++){
+        var canv = createCanvas(100,100,"white","network"+n);
         contests[0].networks[n].draw(canv); 
     }
 
@@ -60,6 +92,29 @@ function resetWorld(){
 
     placePlayers();
     updateCanvas();
+}
+
+function cloneNetwork(n){
+    return JSON.parse(JSON.stringify(n));
+}
+
+// shuffle array via Fisher-Yates shuffle
+function shuffle(a){
+    var index = 0;
+    while (index != 0){
+        r = getRand(0,index,1);
+        index--;
+
+        // Swap item at index 'r' with item at index 'index'
+        temp = a[index];
+        a[index] = a[r];
+        a[r] = temp;
+    }
+    return a;
+}
+
+function reproduce(n){
+    return n;
 }
 
 function getBestPlayer(){
@@ -697,7 +752,6 @@ function randWeights(numNodes){
     }
     return w;
 }
-
 
 
 main();
