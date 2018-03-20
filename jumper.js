@@ -41,7 +41,7 @@ function resetWorld(){
     }
 
     for (var n = 0; n < 2; n++){
-        canv = createCanvas(100,100,"white","gameAreas"+n);
+        canv = createCanvas(100,100,"white","network"+n);
         contests[0].networks[n].draw(canv); 
     }
 
