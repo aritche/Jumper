@@ -268,24 +268,24 @@ function overlap(a, b){
 }
 
 function placePlayers(){
-    var players = [];
     for (var c = 0; c < contests.length; c++){
-        players.push.apply(players,contests[c].players);
-    }
-    for (var p = 0; p < players.length; p++){
-        players[p].x = stage.x+players[p].radius+stage.width*(p/(players.length-1));
-        
-        //fix final player's position
-        if (p == players.length-1){
-            players[p].x -= players[p].radius*2;
+        var players = [];
+        players = contests[c].players;
+        for (var p = 0; p < players.length; p++){
+            players[p].x = stage.x+players[p].radius+stage.width*(p/(players.length-1));
+            
+            //fix final player's position
+            if (p == players.length-1){
+                players[p].x -= players[p].radius*2;
+            }
+            players[p].y = canvas.height-(stage.height+players[p].radius);
+
+            players[p].startX = players[p].x;
+            players[p].startY = players[p].y;
+
+            // sink player slightly into ground
+            //players[p].y += players[p].radius*2*0.08;
         }
-        players[p].y = canvas.height-(stage.height+players[p].radius);
-
-        players[p].startX = players[p].x;
-        players[p].startY = players[p].y;
-
-        // sink player slightly into ground
-        //players[p].y += players[p].radius*2*0.08;
     }
 }
 
