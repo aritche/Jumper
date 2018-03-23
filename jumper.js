@@ -48,6 +48,10 @@ function resetWorld(){
             networks.push(new Network([4,5,5]));
         }
     } else{
+        // Draw the best network
+        var canv = createCanvas(100, 100, "white", "bestNetwork");
+        getBestNetwork().draw(canv);
+
         // Reproduce networks;
         networks = reproduce(networks);
     }
@@ -62,9 +66,6 @@ function resetWorld(){
         }
         contests.push(new Contest(chosenNetworks));
     }
-
-    var canv = createCanvas(100, 100, "white", "bestNetwork");
-    getBestNetwork().draw(canv);
 
     clouds = [];
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
@@ -241,6 +242,7 @@ function collisions(contest){
             winners.push(winner);
 
             contest.isOver = true;
+            winner.network.score += time*time;
             contest.winner = winner;
         }
         //players = winners;
