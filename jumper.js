@@ -63,10 +63,8 @@ function resetWorld(){
         contests.push(new Contest(chosenNetworks));
     }
 
-    for (var n = 0; n < playersPerContest; n++){
-        var canv = createCanvas(100,100,"white","network"+n);
-        contests[0].networks[n].draw(canv); 
-    }
+    var canv = createCanvas(100, 100, "white", "bestNetwork");
+    getBestNetwork().draw(canv);
 
     clouds = [];
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
@@ -757,6 +755,14 @@ function Network(numNodes){
                 }
             }
         }
+        
+        context.beginPath();
+        context.font = "12px Arial";
+        context.fillStyle = "black";
+        context.textAlign = "right";
+        context.textBaseline = "top";
+        context.fillText("Score: " + this.score,canv.width*0.98, canv.height*0.02);
+        context.closePath();
     }
 }
 
