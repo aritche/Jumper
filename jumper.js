@@ -15,6 +15,7 @@ var timePunishment = 0;
 
 var time = 0; // elapsed time in seconds
 var generation = 0;
+var mutateChance = 2;
 
 var clouds = [];
 var colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black', 'white'];
@@ -25,7 +26,7 @@ var stageImage = new Image();
 stageImage.src = 'stage.gif';
 
 var contests = []; // a list of all current contests
-var numContests = 300;
+var numContests = 20;
 var playersPerContest = 2;
 var networks = []; // a list of all current networks
 
@@ -88,6 +89,16 @@ function cloneNetwork(n){
     return JSON.parse(JSON.stringify(n));
 }
 
+
+// Get the population average score
+function getAverage(){
+    var total = 0;
+    for (var n = 0; n < networks.length; n++){
+        total += networks[n].score;
+    }
+    return total/networks.length;
+}
+
 // shuffle array via Fisher-Yates shuffle
 function shuffle(a){
     var index = a.length;
@@ -105,23 +116,76 @@ function shuffle(a){
 
 function reproduce(nets){
     // Make sure the scores of each network are zero before passing back
-    console.log(getGenes(nets[0]));
-    return nets;
-}
+    var pop = [];
+    var genes = [];
+    for (var n = 0; n < nets.length; n++){
+        genes.push(getGenes(nets[n]));
+    }
 
-function getBestPlayer(){
-    var bestScore;
-    var bestPlayer;
-    for (var c = 0; c < contests.length; c++){
-        var players = contests[c].players;
-        for (var p = 0; p < players.length; p++){
-            if (bestScore == null || players[p].network.score >= bestScore){
-                bestScore = players[p].network.score;
-                bestPlayer = players[p];
+    // Push the current best network
+    var best = getBestNetwork();
+    best.score = 0;
+    pop.push(best);
+
+    while (pop.length < nets.length){
+        // Select two parents via roulette-wheel selection
+        var pool = createSelectionPool(nets);
+        var parents = [];
+        parents.push(getGenes(nets[pool[getRand(0,pool.length,1)]]));
+        parents.push(getGenes(nets[pool[getRand(0,pool.length,1)]]));
+
+        // Select random point in random parent's genes
+        // NOTE: Assumes parents have same num layers and layer sizes
+        var selectedParent = getRand(0, 2, 1);
+        var otherParent = selectedParent == 0 ? 1 : 0;
+        var point = getRand(0, parents[selectedParent].length, 1);
+        var child = parents[selectedParent].slice(0, point+1);
+        if (child.length != parents[selectedParent].length){
+            child.push.apply(child, parents[otherParent].slice(point+1,parents[otherParent].length+1));
+        }
+
+        // Iterate over each gene component and randomly mutate given chance
+        for (var g = child[0]+1; g < child.length; g++){
+            if (getRand(0, 100, 1) < mutateChance){
+                child[g] = getRand(-1, 1, 0);
             }
         }
+
+        pop.push(genNetwork(child));
     }
-    return bestPlayer;
+    return pop;
+}
+
+
+// Returns an array, where items are indexes of 'nets' array
+// Number of times an index is in pool = score of network
+function createSelectionPool(nets){
+    var pool = [];
+
+    for (var n = 0; n < nets.length; n++){
+        if (nets[n].score == 0){ // negative scores only once
+            pool.push(n);
+            continue;
+        }
+        for (var repeat = 0; repeat < nets[n].score; repeat++){
+            pool.push(n);
+        }
+    }
+
+    return pool;
+}
+
+function getBestNetwork(){
+    var bestScore;
+    var bestNetwork;
+    for (var n = 0; n < networks.length; n++){
+        if (bestScore == null || networks[n].score >= bestScore){
+            bestScore = networks[n].score;
+            bestNetwork = networks[n];
+        }
+    }
+
+    return bestNetwork;
 }
 
 function collisions(contest){
@@ -204,7 +268,10 @@ function overlap(a, b){
 }
 
 function placePlayers(){
-    var players = contests[0].players;
+    var players = [];
+    for (var c = 0; c < contests.length; c++){
+        players.push.apply(players,contests[c].players);
+    }
     for (var p = 0; p < players.length; p++){
         players[p].x = stage.x+players[p].radius+stage.width*(p/(players.length-1));
         
@@ -383,7 +450,7 @@ function updateCanvas(){
     paintTime();
 
     if (time >= 5){
-        console.log(getBestPlayer());
+        console.log("Best Score: " + getBestNetwork().score + ", AVG: "+ getAverage());
         resetWorld();
     } else{
         requestAnimationFrame(updateCanvas);
@@ -537,7 +604,12 @@ function paintDanger(){
 
 function paintPlayers(){
     // paint the player tag
-    players = contests[0].players;
+    //var players = contests[0].players;
+    var players = [];
+    for (var c = 0; c < contests.length; c++){
+        players.push.apply(players,contests[c].players);
+    }
+
     for (var p = 0; p < players.length; p++){
         paintTag(players[p],players[p].x-players[p].radius*2,players[p].y-players[p].radius*3);
         ctx.beginPath();
@@ -780,7 +852,6 @@ function genNetwork(genes){
     for (var l = 0; l < numLayers; l++){
         layerSizes.push(genes.shift()); 
     }
-    console.log("Genes"+ genes);
 
     var net = new Network(layerSizes);
     var pos = 0;
