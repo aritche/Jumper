@@ -9,7 +9,7 @@ var ctx = canvas.getContext("2d");
 var stage;
 var g = 1;
 var ag = -2; // attack gravity. acceleration back to starting pos after an attack
-var reward = 30; // reward for destroying enemy
+var reward = +30; // reward for destroying enemy
 var punishment = -30; // punishment for being destroyed or falling off edge
 var timePunishment = 0;
 
@@ -124,6 +124,7 @@ function reproduce(nets){
 
     // Push the current best network
     var best = getBestNetwork();
+    console.log("\tAdded best " + best.score);
     best.score = 0;
     pop.push(best);
 
@@ -460,7 +461,7 @@ function updateCanvas(){
 
 
 function secondPlayerAction(contest){
-    var n = contest.networks[0];
+    var n = contest.networks[1];
     var out = n.feedforward([contest.players[0].x, contest.players[0].y, contest.players[1].x, contest.players[1].y]);
     takeAction(out, contest.players[1]);
 }
