@@ -26,7 +26,7 @@ var stageImage = new Image();
 stageImage.src = 'stage.gif';
 
 var contests = []; // a list of all current contests
-var numContests = 20;
+var numContests = 200;
 var playersPerContest = 2;
 var networks = []; // a list of all current networks
 
@@ -448,6 +448,7 @@ function updateCanvas(){
     paintPlayers();
     paintStages();
     paintTime();
+    paintGen();
 
     if (time >= 5){
         console.log("Best Score: " + getBestNetwork().score + ", AVG: "+ getAverage());
@@ -568,6 +569,16 @@ function paintStages(){
     ctx.fillRect(stage.x, stage.y, stage.width, stage.height);
     ctx.closePath();
 }
+
+function paintGen(){
+    ctx.beginPath();
+    ctx.font = "30px Arial";
+    ctx.fillStyle = "black";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText("Generation: " + generation,canvas.width*0.02, canvas.height*0.02);
+    ctx.closePath();
+} 
 
 function paintTime(){
     ctx.beginPath();
