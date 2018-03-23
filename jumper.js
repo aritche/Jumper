@@ -103,9 +103,10 @@ function shuffle(a){
     return a;
 }
 
-function reproduce(n){
+function reproduce(nets){
     // Make sure the scores of each network are zero before passing back
-    return n;
+    console.log(getGenes(nets[0]));
+    return nets;
 }
 
 function getBestPlayer(){
@@ -596,7 +597,10 @@ function getRand(min, max, wantInt){
 function Network(numNodes){
     this.score = 0; // value of the network (for genetic algorithm)
     this.nodes       = genNodes(numNodes);
-    this.weights     = genWeights(this.nodes);
+
+    // Generate weights for the nodes
+    genWeights(this.nodes);
+
     this.numLayers   = numNodes.length;
     this.numNodes    = numNodes;
     this.feedforward = function(inputs){
@@ -693,12 +697,6 @@ function sigmoid(x){
     return 1/(1+Math.pow(Math.E,-x)); 
 }
 
-function Weight(a,b, w){
-    this.start  = a;
-    this.end    = b;
-    this.weight = w;
-}
-
 function Node(layer){
     this.layer = layer;
     this.weights = []; 
@@ -740,6 +738,61 @@ function randWeights(numNodes){
         }
     }
     return w;
+}
+
+/*
+    Get the genes for a network 'n'
+    GENE STRUCTURE:
+    Network = [2, 3, 2]
+    Nodes:
+        Layer 0: 00, 01
+        Layer 1: 10, 11, 12
+        Layer 2: 20, 21
+
+             Layer Sizes                      Weights between nodes
+              v------v  v-----------------------------------------------------------------v
+    Genes: [3, 2, 3, 2, 00->10, 00->11, 00->12, 01->10, 01->11, 01->12, ..., 12->20, 12->21]
+            ^num layers
+        where 'a->b' indicates the weight between node a to b
+*/
+function getGenes(n){
+    var layerSizes = n.numNodes; // number of nodes in each layer [a, b, c] 
+    var numLayers = layerSizes.length;
+    var genes = [numLayers];
+    for (var l = 0; l < numLayers; l++){
+        genes.push(layerSizes[l]);
+    }
+
+    var nodes = n.nodes;
+    for (var l = 0; l < numLayers; l++){
+        for (var n = 0; n < layerSizes[l]; n++){
+            genes.push.apply(genes, nodes[l][n].weights);
+        }
+    }
+
+    return genes;
+}
+
+// Generate a network given its genes
+function genNetwork(genes){
+    var numLayers = genes.shift();
+    var layerSizes = [];
+    for (var l = 0; l < numLayers; l++){
+        layerSizes.push(genes.shift()); 
+    }
+    console.log("Genes"+ genes);
+
+    var net = new Network(layerSizes);
+    var pos = 0;
+    for (var l = 0; l < numLayers-1; l++){
+        for (var n = 0; n < layerSizes[l]; n++){
+            for (var n_dest = 0; n_dest < layerSizes[l+1]; n_dest++){
+                net.setWeight(l, n, n_dest, genes[pos++]) ;   
+            }
+        }
+    }
+
+    return net;
 }
 
 
