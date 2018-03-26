@@ -453,6 +453,7 @@ function updateCanvas(){
 
     if (time >= 5){
         console.log("Best Score: " + getBestNetwork().score + ", AVG: "+ getAverage());
+        console.log(getGenes(getBestNetwork()));
         resetWorld();
     } else{
         requestAnimationFrame(updateCanvas);
