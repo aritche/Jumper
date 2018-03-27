@@ -30,9 +30,14 @@ var numContests = 200;
 var playersPerContest = 2;
 var networks = []; // a list of all current networks
 
+var graph;
+var avgScores = [];
+
 function main(){
     setInterval(function(){time += 1}, 1000);
     resetWorld();
+    
+    graph = createGraph("graph", "Pop. Avg. Score", "Gen", "Score");
 }
 
 // resets the world and all its players
@@ -468,9 +473,17 @@ function updateCanvas(){
     paintTime();
     paintGen();
 
+
     if (time >= 5){
         console.log("Best Score: " + getBestNetwork().score + ", AVG: "+ getAverage());
+
+        // Update the graph
+        avgScores.push([generation,getAverage()]);
+        graph.updateOptions({'file': avgScores});
+
+        // Log best fish
         console.log(getGenes(getBestNetwork()));
+
         resetWorld();
     } else{
         requestAnimationFrame(updateCanvas);
@@ -904,5 +917,27 @@ function genNetwork(genes){
     return net;
 }
 
+
+function createGraph(id, title, xLabel, yLabel){
+    // Create div for graph
+    var div = document.createElement("div");
+    div.id = id;
+    div.className = 'graph';
+    document.body.appendChild(div);
+
+    // Create actual graph
+    var dataArray = [[0,0]];
+    var graph = new Dygraph(document.getElementById(id), dataArray,
+        {
+            // Options go here
+            //legend: 'always',
+            animatedZooms: true,
+            title: title,
+            labels: [xLabel, yLabel],
+            //valueRange: [yMin, yMax]
+        }
+    );
+    return graph;
+}
 
 main();
