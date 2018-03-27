@@ -37,7 +37,7 @@ function main(){
     setInterval(function(){time += 1}, 1000);
     resetWorld();
     
-    graph = createGraph("graph", "Pop. Avg. Score", "Gen", "Score");
+    graph = createGraph("graph", "Population Avgerage Scores", "Gen", "Score");
 }
 
 // resets the world and all its players
