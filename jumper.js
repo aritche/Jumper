@@ -384,6 +384,18 @@ function Player(name, id, color, network){
 
     // Neural network used by the player
     this.network = network;
+
+    // Resets all properties of the player but keeps score intact
+    this.resetProperties = function(){
+        this.x = getRand(stage.x+this.radius,stage.x+this.radius+stage.width,1);
+        this.y = this.startY;
+        this.velocity = [0,0];
+        this.isJumping = false;
+        this.direction = 0;
+        this.directionFacing = 0;
+        this.isAttacking = false;
+        this.attackPos = [0,0];
+    }
 }
 
 
@@ -432,13 +444,18 @@ function updateCanvas(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     
     for (var c = 0; c < contests.length; c++){
-        if (!contests[c].isOver){
-            collisions(contests[c]);
-            movePlayers(contests[c]);
-            firstPlayerAction(contests[c]);
-            secondPlayerAction(contests[c]);
-            updatePlayerScores(contests[c]);
+        if (contests[c].isOver){
+            var players = contests[c].players;
+            for (var p = 0; p < players.length; p++){
+                players[p].resetProperties();
+            }
+            contests[c].isOver = false;
         }
+        collisions(contests[c]);
+        movePlayers(contests[c]);
+        firstPlayerAction(contests[c]);
+        secondPlayerAction(contests[c]);
+        updatePlayerScores(contests[c]);
     }
 
     moveClouds();
