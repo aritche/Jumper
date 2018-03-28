@@ -422,10 +422,16 @@ function checkKey(e){
     if (e.keyCode == '90') players[1].move(-1); 
     if (e.keyCode == '88') players[1].move(0);
 
-    if (e.keyCode == '32') players[0].jump();
+    if (e.keyCode == '32'){
+        players[0].jump();
+        e.preventDefault();
+    }
     if (e.keyCode == '39') players[0].move(1);
     if (e.keyCode == '37') players[0].move(-1);
-    if (e.keyCode == '40') players[0].move(0);
+    if (e.keyCode == '40'){
+        players[0].move(0);
+        e.preventDefault();
+    }
     if (e.keyCode == '65') players[0].attack();
 }
 document.onkeydown = checkKey;
@@ -503,9 +509,11 @@ function secondPlayerAction(contest){
 }
 
 function firstPlayerAction(contest){
-    var n = contest.networks[0];
-    var out = n.feedforward([contest.players[1].x, contest.players[1].y, contest.players[0].x, contest.players[0].y]);
-    takeAction(out, contest.players[0]);
+    //if (contest != contests[0]){
+        var n = contest.networks[0];
+        var out = n.feedforward([contest.players[1].x, contest.players[1].y, contest.players[0].x, contest.players[0].y]);
+        takeAction(out, contest.players[0]);
+    //}
 }
 
 function updatePlayerScores(contest){
@@ -541,6 +549,7 @@ function takeAction(output, player){
 
 function movePlayers(contest){
     var players = contest.players;
+
     for (var p = 0; p < players.length; p++){
         // if we will reach the ground on the next velocity step
         // or also applies if we are currently on the ground due to gravity
@@ -652,11 +661,11 @@ function paintDanger(){
 
 function paintPlayers(){
     // paint the player tag
-    //var players = contests[0].players;
     var players = [];
     for (var c = 0; c < contests.length; c++){
         players.push.apply(players,contests[c].players);
     }
+    //var players = contests[0].players;
 
     for (var p = 0; p < players.length; p++){
         paintTag(players[p],players[p].x-players[p].radius*2,players[p].y-players[p].radius*3);
