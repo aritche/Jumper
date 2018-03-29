@@ -45,7 +45,7 @@ var graphAvg;
 var graphBest;
 var avgScores = [];
 var bestScores = [];
-var bestNetwork = createCanvas(100, 100, "white", "bestNetwork"); // the canvas for the best network;
+var bestNetwork = createCanvas(200, 200, "white", "bestNetwork"); // the canvas for the best network;
 
 function main(){
     // Increment the timer
@@ -71,6 +71,10 @@ function resetWorld(){
         for (var n = 0; n < numContests*playersPerContest; n++){
             networks.push(new Network([4,5,5]));
         }
+        
+        // Paint a random network as the best network, since none have
+        //   been tested yet.
+        networks[0].draw(bestNetwork);
     } else{
         // Draw the best network
         getBestNetwork().draw(bestNetwork);
@@ -78,6 +82,7 @@ function resetWorld(){
         // Reproduce networks;
         networks = reproduce(networks);
     }
+
 
     // Create contests
     networks = shuffle(networks);
@@ -177,11 +182,9 @@ function reproduce(nets){
 
     // Make all network scores positive
     conditionScores();
-    console.log(networks);
 
     // Push the current best network
     var best = getBestNetwork();
-    console.log("\tAdded best " + best.score);
     best.score = 0;
     pop.push(best);
 
@@ -535,16 +538,11 @@ function updateCanvas(){
 
 
     if (time >= 5){
-        console.log("Best Score: " + getBestNetwork().score + ", AVG: "+ getAverage());
-
         // Update the graph
         avgScores.push([generation,getAverage()]);
         bestScores.push([generation,getBestNetwork().score]);
         graphAvg.updateOptions({'file': avgScores});
         graphBest.updateOptions({'file': bestScores});
-
-        // Log best fish
-        console.log(getGenes(getBestNetwork()));
 
         resetWorld();
     } else{
@@ -836,6 +834,7 @@ function Network(numNodes){
         // Clear the canvas
         context.clearRect(0,0,canv.width,canv.height);
 
+        // Draw the nodes
         for (var layer = 0; layer < nn.nodes.length; layer++){
             if (!locations[layer]) locations[layer] = [];
             for (var node = 0; node < nn.nodes[layer].length; node++){
@@ -855,6 +854,7 @@ function Network(numNodes){
             }
         }
         
+        // Draw the connections
         for (var layer = 0; layer < nn.numLayers-1; layer++){
             var adj = layer+1;
             for (var a = 0; a < nn.nodes[layer].length; a++){
@@ -867,12 +867,22 @@ function Network(numNodes){
             }
         }
         
+        // Draw the score
         context.beginPath();
-        context.font = "12px Arial";
+        context.font = "22px Arial";
         context.fillStyle = "black";
         context.textAlign = "right";
         context.textBaseline = "top";
         context.fillText("Score: " + this.score,canv.width*0.98, canv.height*0.02);
+        context.closePath();
+
+        // Draw the title
+        context.beginPath();
+        context.font = "bold 22px Arial";
+        context.fillStyle = "black";
+        context.textAlign = "left";
+        context.textBaseline = "top";
+        context.fillText("Best Net (Prev Gen)",canv.width*0.02, canv.height*0.02);
         context.closePath();
     }
 }
