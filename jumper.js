@@ -69,7 +69,7 @@ function resetWorld(){
     if (generation == 1){
         // Generate networks
         for (var n = 0; n < numContests*playersPerContest; n++){
-            networks.push(new Network([4,5,5]));
+            networks.push(new Network([6,5,5]));
         }
         
         // Paint a random network as the best network, since none have
@@ -536,6 +536,7 @@ function updateCanvas(){
     paintTime();
     paintGen();
 
+    if (testing) paintNetwork(contests[0]);
 
     if (time >= 5){
         // Update the graph
@@ -550,10 +551,38 @@ function updateCanvas(){
     }
 }
 
+function paintNetwork(c){
+    ctx.beginPath();
+    ctx.font = "22px Arial";
+    ctx.fillStyle = "black";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    var out = c.players[1].network.feedforward([c.players[0].x, c.players[0].y, c.players[1].x, c.players[1].y, c.players[1].directionFacing, c.players[1].direction]);
+    var max = out[0];
+    var maxI = 0;
+    for (var i = 0; i < out.length; i++){
+        if (out[i] > max){
+            max = out[i];
+            maxI = i;
+        }
+    }
+
+    var a;
+    if (maxI == 0) a = 'Moving Left';
+    if (maxI == 1) a = 'Moving Right';
+    if (maxI == 2) a = 'Stationary';
+    if (maxI == 3) a = 'Jumping';
+    if (maxI == 4) a = 'Attacking';
+
+    ctx.fillStyle = "blue";
+    ctx.fillText(a, c.players[1].x, c.players[1].y-110);
+    ctx.closePath();
+}
+
 
 function secondPlayerAction(contest){
     var n = contest.networks[1];
-    var out = n.feedforward([contest.players[0].x, contest.players[0].y, contest.players[1].x, contest.players[1].y]);
+    var out = n.feedforward([contest.players[0].x, contest.players[0].y, contest.players[1].x, contest.players[1].y, contest.players[1].directionFacing, contest.players[1].direction]);
     takeAction(out, contest.players[1]);
 }
 
@@ -562,7 +591,7 @@ function firstPlayerAction(contest,n){
     if (!(n == 0 && testing)){
     //if (contest != contests[0]){
         var n = contest.networks[0];
-        var out = n.feedforward([contest.players[1].x, contest.players[1].y, contest.players[0].x, contest.players[0].y]);
+        var out = n.feedforward([contest.players[1].x, contest.players[1].y, contest.players[0].x, contest.players[0].y, contest.players[0].directionFacing, contest.players[0].direction]);
         takeAction(out, contest.players[0]);
     //}
     }
