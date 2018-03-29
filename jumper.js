@@ -517,7 +517,7 @@ function updateCanvas(){
         }
         collisions(contests[c]);
         movePlayers(contests[c]);
-        firstPlayerAction(contests[c]);
+        firstPlayerAction(contests[c],c);
         secondPlayerAction(contests[c]);
         updatePlayerScores(contests[c]);
     }
@@ -559,8 +559,9 @@ function secondPlayerAction(contest){
     takeAction(out, contest.players[1]);
 }
 
-function firstPlayerAction(contest){
-    if (!(contest == contest[0] && testing)){
+// n == current contest number
+function firstPlayerAction(contest,n){
+    if (!(n == 0 && testing)){
     //if (contest != contests[0]){
         var n = contest.networks[0];
         var out = n.feedforward([contest.players[1].x, contest.players[1].y, contest.players[0].x, contest.players[0].y]);
