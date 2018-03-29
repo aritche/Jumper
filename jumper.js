@@ -433,8 +433,8 @@ function Player(name, id, color, network){
     this.attackPos = [0,0]; // pullback coordinates after an attack
     this.attackVelocity = [0,0]; // original velocity before attack 
     this.attack = function(){
-        // can only attack while not moving and not already attacking
-        if (this.direction == 0 && !this.isAttacking){ 
+        // can only attack while not movint, not already attacking, and not facing down
+        if (this.direction == 0 && !this.isAttacking && this.directionFacing != 0){ 
             this.isAttacking = true;
             this.attackPos = [this.x,this.y];
             this.attackVelocity = [this.velocity[0],this.velocity[1]];
