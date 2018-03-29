@@ -22,10 +22,10 @@ var stageImage = new Image();
 stageImage.src = 'stage.gif';
 
 // Player score values
-var reward = +10;       // reward for actions like destroying an enemy 
-var punishment = -10;   // punishment for events like being destroyed
+var reward = +50000;       // reward for actions like destroying an enemy 
+var punishment = -1000;   // punishment for events like being destroyed
 var timePunishment = 0; // punishment applied every second. Used to deter stationary agents
-var stationaryPunishment = 0.01;
+var stationaryPunishment = -1;
 
 // Genetic Algorithm Properties
 var generation = 0;   // current generation
@@ -131,6 +131,42 @@ function shuffle(a){
     return a;
 }
 
+// Get the minimum score out of all the networks
+function minScore(){
+    var min = networks[0].score;
+    for (var n = 0; n < networks.length; n++){
+        if (networks[n].score < min) min = networks[n].score;
+    }
+    return min;
+}
+
+function maxScore(){
+    var max = networks[0].score;
+    for (var n = 0; n < networks.length; n++){
+        if (networks[n].score > max) max = networks[n].score;
+    }
+    return max;
+}
+
+// Shift all network scores into positive scores by adding minimum score
+function conditionScores(){
+    // Make all scores positive
+    var min = minScore();
+    for (var n = 0; n < networks.length; n++){
+        networks[n].score += Math.abs(min);
+    }
+    
+    var max = maxScore()+1; // '+1' is in case max score is 0
+    for (var n = 0; n < networks.length; n++){
+        // Normalise into range approx. [0,5]
+        networks[n].score = 5*networks[n].score/max;
+
+        // Create exponential shape to higher scores are much more likely
+        //   to be selected
+        networks[n].score = Math.pow(networks[n].score,2);
+    }
+}
+
 function reproduce(nets){
     // Make sure the scores of each network are zero before passing back
     var pop = [];
@@ -138,6 +174,10 @@ function reproduce(nets){
     for (var n = 0; n < nets.length; n++){
         genes.push(getGenes(nets[n]));
     }
+
+    // Make all network scores positive
+    conditionScores();
+    console.log(networks);
 
     // Push the current best network
     var best = getBestNetwork();
@@ -520,7 +560,7 @@ function secondPlayerAction(contest){
 }
 
 function firstPlayerAction(contest){
-    if (!testing){
+    if (contest != contest[0] && !testing){
     //if (contest != contests[0]){
         var n = contest.networks[0];
         var out = n.feedforward([contest.players[1].x, contest.players[1].y, contest.players[0].x, contest.players[0].y]);
@@ -564,7 +604,7 @@ function movePlayers(contest){
     var players = contest.players;
 
     for (var p = 0; p < players.length; p++){
-        if (players[p].velocity[0] == 0 && players[p].velocity[1] == 0) players[p].network.score -= stationaryPunishment;
+        if (players[p].velocity[0] == 0 && players[p].velocity[1] == 0) players[p].network.score += stationaryPunishment;
         // if we will reach the ground on the next velocity step
         // or also applies if we are currently on the ground due to gravity
         if (players[p].y + players[p].velocity[1] + players[p].radius >= stage.y){
