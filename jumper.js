@@ -25,6 +25,7 @@ stageImage.src = 'stage.gif';
 var reward = +10;       // reward for actions like destroying an enemy 
 var punishment = -10;   // punishment for events like being destroyed
 var timePunishment = 0; // punishment applied every second. Used to deter stationary agents
+var stationaryPunishment = 0.01;
 
 // Genetic Algorithm Properties
 var generation = 0;   // current generation
@@ -35,6 +36,9 @@ var contests = [];         // a list of all current contests
 var numContests = 200;     // number of simultaneous contests
 var playersPerContest = 2; // number of players per contest
 var networks = [];         // a list of all current networks
+var testing = true;        // When true, only one contest will be visualised
+                           // 'Player 0' in that contest will also be controlled
+                           // by the human player
 
 // Graphs
 var graphAvg;
@@ -478,6 +482,7 @@ function updateCanvas(){
         updatePlayerScores(contests[c]);
     }
 
+
     moveClouds();
 
     paintBackdrop();
@@ -515,11 +520,13 @@ function secondPlayerAction(contest){
 }
 
 function firstPlayerAction(contest){
+    if (!testing){
     //if (contest != contests[0]){
         var n = contest.networks[0];
         var out = n.feedforward([contest.players[1].x, contest.players[1].y, contest.players[0].x, contest.players[0].y]);
         takeAction(out, contest.players[0]);
     //}
+    }
 }
 
 function updatePlayerScores(contest){
@@ -557,6 +564,7 @@ function movePlayers(contest){
     var players = contest.players;
 
     for (var p = 0; p < players.length; p++){
+        if (players[p].velocity[0] == 0 && players[p].velocity[1] == 0) players[p].network.score -= stationaryPunishment;
         // if we will reach the ground on the next velocity step
         // or also applies if we are currently on the ground due to gravity
         if (players[p].y + players[p].velocity[1] + players[p].radius >= stage.y){
@@ -671,7 +679,11 @@ function paintPlayers(){
     for (var c = 0; c < contests.length; c++){
         players.push.apply(players,contests[c].players);
     }
-    //var players = contests[0].players;
+
+    // If current round is a testing session, only paint contest 0
+    if (testing){
+        var players = contests[0].players;
+    }
 
     for (var p = 0; p < players.length; p++){
         paintTag(players[p],players[p].x-players[p].radius*2,players[p].y-players[p].radius*3);
@@ -702,7 +714,7 @@ function paintTag(p, x,y){
     if (p.network.score > 0)  ctx.fillStyle = "green";
     if (p.network.score == 0) ctx.fillStyle = "white";
     if (p.network.score < 0)  ctx.fillStyle = "red";
-    ctx.fillText(p.network.score,x+fontWidth/2,y-fontHeight );
+    ctx.fillText(Math.round(p.network.score*100)/100,x+fontWidth/2,y-fontHeight );
 //    ctx.beginPath();
 //    ctx.fillStyle = "rgba(0,0,0,0,0.5)"; 
 //    ctx.fillRect()
