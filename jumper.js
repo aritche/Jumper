@@ -29,7 +29,7 @@ var stationaryPunishment = -1;
 
 // Genetic Algorithm Properties
 var generation = 0;   // current generation
-var mutateChance = 2; // integer representing percentage from 0 to 100
+var mutateChance = 10; // integer representing percentage from 0 to 100
 
 // Gameplay properties
 var contests = [];         // a list of all current contests
