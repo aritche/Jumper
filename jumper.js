@@ -3,47 +3,58 @@ var requestAnimationFrame = window.requestAnimationFrame ||
                             window.webkitRequestAnimationFrame || 
                             window.msRequestAnimationFrame;
 
+// Canvas Properties
 var canvas = createCanvas(500, 250, 'white', 'gameArea');
 var ctx = canvas.getContext("2d");
 
-var stage;
-var g = 1;
-var ag = -2; // attack gravity. acceleration back to starting pos after an attack
-var reward = +30; // reward for destroying enemy
-var punishment = -30; // punishment for being destroyed or falling off edge
-var timePunishment = 0;
-
+// Simulation Properties
 var time = 0; // elapsed time in seconds
-var generation = 0;
-var mutateChance = 2;
+var g = 1;    // gravity
+var ag = -2;  // attack gravity. acceleration back to starting pos after an attack
 
+// Simulation Assets
+var stage;    // the fighting stage
 var clouds = [];
 var colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black', 'white'];
-
 var dangerImage  = new Image();
 dangerImage.src = 'lava.gif';
 var stageImage = new Image();
 stageImage.src = 'stage.gif';
 
-var contests = []; // a list of all current contests
-var numContests = 200;
-var playersPerContest = 2;
-var networks = []; // a list of all current networks
+// Player score values
+var reward = +10;       // reward for actions like destroying an enemy 
+var punishment = -10;   // punishment for events like being destroyed
+var timePunishment = 0; // punishment applied every second. Used to deter stationary agents
 
+// Genetic Algorithm Properties
+var generation = 0;   // current generation
+var mutateChance = 2; // integer representing percentage from 0 to 100
+
+// Gameplay properties
+var contests = [];         // a list of all current contests
+var numContests = 200;     // number of simultaneous contests
+var playersPerContest = 2; // number of players per contest
+var networks = [];         // a list of all current networks
+
+// Graphs
 var graphAvg;
 var graphBest;
 var avgScores = [];
 var bestScores = [];
 
 function main(){
+    // Increment the timer
     setInterval(function(){time += 1}, 1000);
+
+    // Ininitate the simulation
     resetWorld();
-    
+   
+    // Create the appropriate graphs
     graphAvg = createGraph("graphAvg", "Population Avgerage Scores", "Gen", "Score");
     graphBest = createGraph("graphBest", "Best Individual Scores", "Gen", "Score");
 }
 
-// resets the world and all its players
+// Resets the world and begins the simulation
 function resetWorld(){
     generation++;
 
@@ -91,11 +102,6 @@ function resetWorld(){
     placePlayers();
     updateCanvas();
 }
-
-function cloneNetwork(n){
-    return JSON.parse(JSON.stringify(n));
-}
-
 
 // Get the population average score
 function getAverage(){
