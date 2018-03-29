@@ -748,18 +748,18 @@ function paintTag(p, x,y){
     ctx.fillRect(x-fontWidth*0.05,y-fontHeight*0.05,fontWidth*1.1,fontHeight*1.1);
     ctx.closePath();
 
+    // Paint player's name
     ctx.fillStyle = "white";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillText(p.name,x,y);
+
+    // Paint player's score
     if (p.network.score > 0)  ctx.fillStyle = "green";
     if (p.network.score == 0) ctx.fillStyle = "white";
     if (p.network.score < 0)  ctx.fillStyle = "red";
+    ctx.textAlign = "center";
     ctx.fillText(Math.round(p.network.score*100)/100,x+fontWidth/2,y-fontHeight );
-//    ctx.beginPath();
-//    ctx.fillStyle = "rgba(0,0,0,0,0.5)"; 
-//    ctx.fillRect()
-//    ctx.closePath();
 }
 
 // Returns a random number in range min (incl.) max (excl.)
