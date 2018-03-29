@@ -40,11 +40,12 @@ var testing = true;        // When true, only one contest will be visualised
                            // 'Player 0' in that contest will also be controlled
                            // by the human player
 
-// Graphs
+// Other Visualisations
 var graphAvg;
 var graphBest;
 var avgScores = [];
 var bestScores = [];
+var bestNetwork = createCanvas(100, 100, "white", "bestNetwork"); // the canvas for the best network;
 
 function main(){
     // Increment the timer
@@ -72,8 +73,7 @@ function resetWorld(){
         }
     } else{
         // Draw the best network
-        var canv = createCanvas(100, 100, "white", "bestNetwork");
-        getBestNetwork().draw(canv);
+        getBestNetwork().draw(bestNetwork);
 
         // Reproduce networks;
         networks = reproduce(networks);
@@ -827,10 +827,15 @@ function Network(numNodes){
 
     
     this.draw = function(canv){
+
         this.locations = [];
         var locations = this.locations;
         var context = canv.getContext("2d");
         var nn = this; 
+
+        // Clear the canvas
+        context.clearRect(0,0,canv.width,canv.height);
+
         for (var layer = 0; layer < nn.nodes.length; layer++){
             if (!locations[layer]) locations[layer] = [];
             for (var node = 0; node < nn.nodes[layer].length; node++){
