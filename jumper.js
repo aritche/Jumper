@@ -560,7 +560,7 @@ function secondPlayerAction(contest){
 }
 
 function firstPlayerAction(contest){
-    if (contest != contest[0] && !testing){
+    if (!(contest == contest[0] && testing)){
     //if (contest != contests[0]){
         var n = contest.networks[0];
         var out = n.feedforward([contest.players[1].x, contest.players[1].y, contest.players[0].x, contest.players[0].y]);
