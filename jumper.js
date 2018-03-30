@@ -741,6 +741,10 @@ function paintDanger(){
     ctx.closePath();
 }
 
+function toggleTesting(){
+    testing = testing ? false : true;
+}
+
 function paintPlayers(){
     // paint the player tag
     var players = [];
