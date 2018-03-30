@@ -39,7 +39,7 @@ var contests = [];         // a list of all current contests
 var numContests = 200;     // number of simultaneous contests
 var playersPerContest = 2; // number of players per contest
 var networks = [];         // a list of all current networks
-var testing = true;        // When true, only one contest will be visualised
+var testing = false;        // When true, only one contest will be visualised
                            // 'Player 0' in that contest will also be controlled
                            // by the human player
 
@@ -575,11 +575,20 @@ function paintNetwork(c){
     var out = c.players[1].network.feedforward([c.players[0].x, c.players[0].y, c.players[1].x, c.players[1].y, c.players[1].directionFacing, c.players[1].direction]);
     var max = out[0];
     var maxI = 0;
+    var min = out[0];
+    var minI = 0;
+    var total = 0;
     for (var i = 0; i < out.length; i++){
+        weightCircle(canvas.width*0.5+i*30-2*30,canvas.height*0.05,10,out[i]);
         if (out[i] > max){
             max = out[i];
             maxI = i;
         }
+        if (out[i] < min){
+            min = out[i];
+            minI = i;
+        }
+        total += out[i];
     }
 
     var a;
@@ -588,6 +597,8 @@ function paintNetwork(c){
     if (maxI == 2) a = 'Stationary';
     if (maxI == 3) a = 'Jumping';
     if (maxI == 4) a = 'Attacking';
+    a += ' ' + Math.round(max/total*100) + '%';
+
 
     ctx.fillStyle = "blue";
     ctx.fillText(a, c.players[1].x, c.players[1].y-110);
@@ -780,6 +791,14 @@ function paintPlayers(){
         ctx.fill();
         ctx.closePath();
     }
+}
+
+function weightCircle(x, y, r, a){
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,2*Math.PI);
+    ctx.fillStyle = "rgba(0,0,0," + a + ")";
+    ctx.fill();
+    ctx.closePath();
 }
 
 // x and y are coordinates of center
