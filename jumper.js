@@ -12,6 +12,7 @@ var ctx = canvas.getContext("2d");
 
 // Simulation Properties
 var time = 0; // elapsed time in seconds
+var maxTime = 5; // time until world resets in seconds
 var g = 1;    // gravity
 var ag = -2;  // attack gravity. acceleration back to starting pos after an attack
 
@@ -192,7 +193,6 @@ function reproduce(nets){
 
     // Condition scores (normalise, exponential, etc.)
     conditionScores();
-    for (var x = 0; x < networks.length; x++) console.log(networks[x].score);
 
     // Push the current best network
     // but do not disqualify it from reproduction
@@ -312,13 +312,20 @@ function collisions(contest){
             else winner = a.isAttacking ? a : b;
             loser = winner == a ? b : a;
 
-            winner.network.score += reward;
+            // Bonus reward for killing an enemy faster
+            var timeDiff = time-contest.prevWin; // number of seconds since previous win
+            var finalReward = reward*(1+(maxTime-timeDiff)/maxTime)
+            
+            // Update previous win time
+            contest.prevWin = time;
+
+            winner.network.score += finalReward;
             loser.network.score += punishment;
 
             winners.push(winner);
 
             contest.isOver = true;
-            winner.network.score += time*time;
+
             contest.winner = winner;
         }
         //players = winners;
@@ -398,6 +405,9 @@ function Contest(networks){
 
     this.networks = networks;
 
+
+    this.prevWin = 0; // time value that the previous win occurred
+    
     // Who won the contest
     this.winner;
 }
@@ -553,7 +563,7 @@ function updateCanvas(){
 
     if (testing) paintNetwork(contests[0]);
 
-    if (time >= 5){
+    if (time >= maxTime){
         // Update the graph
         avgScores.push([generation,getAverage()]);
         bestScores.push([generation,getBestNetwork().score]);

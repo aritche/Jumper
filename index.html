@@ -19,6 +19,11 @@
             float: left;
         }
 
+        #controls{
+            border: 1px solid black;
+            padding: 5px;
+            margin: 0 auto;
+        }
 
     </style>
     <meta name="viewport" content='width=600'>
@@ -29,6 +34,66 @@
 <h1>Evolving Neural Networks</h1>
 <hr>
 </body>
-<button id="toggle_test">Toggle Testing Mode</button>
-<script type="text/javascript" src="jumper.js"></script>
+    <p><strong>Overview:</strong></p>
+    <ul>
+        <li>Gameplay</li>
+        <ul>
+            <li>Players can move left/right, be stationary, and jump.</li>
+            <li>If a player is stationary, it can attack in the direction it is facing</li>
+            <li>If a player destroys an enemy, both players are randomly repositioned on the fighting stage</li>
+            <li>An individual match continues until 5 seconds has elapsed</li>
+        </ul>
+        <li>Scores</li>
+        <ul>
+            <li>Get points by destroying the enemy</li>
+            <li>The faster you destroy an enemy, the more points you get</li>
+            <li>Lose Points by:</li>
+            <ul>
+                <li>Falling off of the fighting stage</li>
+                <li>Being destroyed</li>
+                <li>Being stationary</li>
+            </ul>
+        </ul>
+        <li>Machine Learning Specifics</li>
+        <ul>
+            <li>There is an initial population of autonomous agents</li>
+            <li>Each agent is controlled by its own Feedforward Neural Network</li>
+            <ul>
+                <li>Inputs Nodes:</li>
+                <ul>
+                    <li>Enemy x position</li>
+                    <li>Enemy y position</li>
+                    <li>My x position</li>
+                    <li>My y position</li>
+                    <li>Direction I am facing</li>
+                    <li>Direction I am moving</li>
+                </ul>
+                <li>Outputs Nodes (highest value output is executed by agent):</li>
+                <ul>
+                    <li>Move left</li>
+                    <li>Move right</li>
+                    <li>Be stationary</li>
+                    <li>Jump</li>
+                    <li>Attack</li>
+                </ul>
+            </ul>
+            <li>Each network begins with random weights, but after each match is complete, a new generation is produced via Genetic Algorithm</li>
+            <ul>
+                <li>The best scoring network is always moved to the next generation</li>
+                <li>Pairs of networks are then randomly chosen (via Roulette-Wheel selection based on their score) to be paired for <strong>reproduction:</strong></li>
+                <ol>
+                    <li>Parent networks are converted to gene form</li>
+                    <li>Random spot Z in the genome is chosen</li>
+                    <li>Genes before point Z are taken from one parent, the rest come from the other parent</li>
+                    <li>Each gene component is iterated over, and there is a small chance that it could be 'mutated' (randomised)</li>
+                </ol>
+            </ul>
+        </ul>
+    </ul>
+    <div id="controls">
+        <strong>Controls:<br></strong>
+        <button id="toggle_test">Toggle Testing Mode</button>
+        
+    </div>
+    <script type="text/javascript" src="jumper.js"></script>
 </html>
