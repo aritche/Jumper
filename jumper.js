@@ -1,7 +1,10 @@
+// HTML properties
 var requestAnimationFrame = window.requestAnimationFrame || 
                             window.mozRequestAnimationFrame || 
                             window.webkitRequestAnimationFrame || 
                             window.msRequestAnimationFrame;
+// determine if using touch events (mobile), or click events (desktop)
+document.getElementById('toggle_test').addEventListener('click', toggleTesting);
 
 // Canvas Properties
 var canvas = createCanvas(500, 250, 'white', 'gameArea');
@@ -216,7 +219,6 @@ function reproduce(nets){
     }
     return pop;
 }
-
 
 // Returns an array, where items are indexes of 'nets' array
 // Number of times an index is in pool = score of network
