@@ -32,7 +32,7 @@ var stationaryPunishment = -1;
 
 // Genetic Algorithm Properties
 var generation = 0;   // current generation
-var mutateChance = 10; // integer representing percentage from 0 to 100
+var mutateChance = 1; // integer representing percentage from 0 to 100
 
 // Gameplay properties
 var contests = [];         // a list of all current contests
@@ -158,19 +158,26 @@ function maxScore(){
 
 // Shift all network scores into positive scores by adding minimum score
 function conditionScores(){
-    // Make all scores positive
-    var min = minScore();
+    // Treat all negative scores as zero
     for (var n = 0; n < networks.length; n++){
-        networks[n].score += Math.abs(min);
+        if (networks[n].score < 0) networks[n].score = 0;
     }
     
+    // Make all scores positive
+    /*var min = minScore();
+    for (var n = 0; n < networks.length; n++){
+        networks[n].score += Math.abs(min);
+    }*/
+    
+    // Scores are now in the range [0,max]
     var max = maxScore()+1; // '+1' is in case max score is 0
     for (var n = 0; n < networks.length; n++){
-        // Normalise into range approx. [0,5]
+        // Normalise into range [0,~5] (note '~5' since max = maxScore + 1
         networks[n].score = 5*networks[n].score/max;
 
         // Create exponential shape to higher scores are much more likely
         //   to be selected
+        // New range is [0,~25]
         networks[n].score = Math.pow(networks[n].score,2);
     }
 }
@@ -183,12 +190,13 @@ function reproduce(nets){
         genes.push(getGenes(nets[n]));
     }
 
-    // Make all network scores positive
+    // Condition scores (normalise, exponential, etc.)
     conditionScores();
+    for (var x = 0; x < networks.length; x++) console.log(networks[x].score);
 
     // Push the current best network
+    // but do not disqualify it from reproduction
     var best = getBestNetwork();
-    best.score = 0;
     pop.push(best);
 
     while (pop.length < nets.length){
@@ -217,6 +225,11 @@ function reproduce(nets){
 
         pop.push(genNetwork(child));
     }
+
+    // Set the first AI's score to zero (since it was the AI that
+    //  was the best in the previous generation and was just transferred
+    //  without mutation or reproduction
+    pop[0].score = 0;
     return pop;
 }
 
@@ -226,7 +239,7 @@ function createSelectionPool(nets){
     var pool = [];
 
     for (var n = 0; n < nets.length; n++){
-        if (nets[n].score == 0){ // negative scores only once
+        if (nets[n].score <= 0){ // neutral or negative scores only once
             pool.push(n);
             continue;
         }
