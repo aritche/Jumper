@@ -26,10 +26,10 @@ var stageImage = new Image();
 stageImage.src = 'stage.gif';
 
 // Player score values
-var reward = +50000;       // reward for actions like destroying an enemy 
-var punishment = -1000;   // punishment for events like being destroyed
+var reward = +50;       // reward for actions like destroying an enemy 
+var punishment = -1;   // punishment for events like being destroyed
 var timePunishment = 0; // punishment applied every second. Used to deter stationary agents
-var stationaryPunishment = -1;
+var stationaryPunishment = -0.001;
 
 // Genetic Algorithm Properties
 var generation = 0;   // current generation
@@ -59,8 +59,8 @@ function main(){
     resetWorld();
    
     // Create the appropriate graphs
-    graphAvg = createGraph("graphAvg", "Population Avgerage Scores", "Gen", "Score");
-    graphBest = createGraph("graphBest", "Best Individual Scores", "Gen", "Score");
+    graphAvg = createGraph("graphAvg", "Population Avgerage Scores", "Gen", "Score", 400,400);
+    graphBest = createGraph("graphBest", "Best Individual Scores", "Gen", "Score",100,100);
 }
 
 // Resets the world and begins the simulation
@@ -1083,7 +1083,7 @@ function genNetwork(genes){
 }
 
 
-function createGraph(id, title, xLabel, yLabel){
+function createGraph(id, title, xLabel, yLabel, w, h){
     // Create div for graph
     var div = document.createElement("div");
     div.id = id;
