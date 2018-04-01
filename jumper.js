@@ -339,7 +339,7 @@ function collisions(contest){
 
             winners.push(winner);
 
-            contest.isOver = true;
+            loser.resetProperties();
 
             contest.winner = winner;
         }
@@ -405,9 +405,6 @@ function Cloud(x, y, width, height, alpha){
 // A Contest (competition, game, etc.) between networks.length players
 // networks is an array of neural networks. e.g. player 0 is assigned networks[0]
 function Contest(networks){
-    // whether the Contest has ended
-    this.isOver = false;
-
     // A list of players in the contest
     this.players = [];
     for (var p = 0; p < networks.length; p++){
@@ -469,7 +466,7 @@ function Player(name, id, color, network){
     this.attackPos = [0,0]; // pullback coordinates after an attack
     this.attackVelocity = [0,0]; // original velocity before attack 
     this.attack = function(){
-        // can only attack while not movint, not already attacking, and not facing down
+        // can only attack while not moving, not already attacking, and not facing down
         if (this.direction == 0 && !this.isAttacking && this.directionFacing != 0){ 
             this.isAttacking = true;
             this.attackPos = [this.x,this.y];
@@ -548,13 +545,6 @@ function updateCanvas(){
     
     // For each contest (including human contest)
     for (var c = 0; c < contests.length; c++){
-        if (contests[c].isOver){
-            var players = contests[c].players;
-            for (var p = 0; p < players.length; p++){
-                players[p].resetProperties();
-            }
-            contests[c].isOver = false;
-        }
         collisions(contests[c]);
         movePlayers(contests[c]);
         firstPlayerAction(contests[c],c);
@@ -704,11 +694,14 @@ function movePlayers(contest){
         }
         // update x-position
         if (players[p].isAttacking && players[p].direction == 0){
+            // If attacking, stationary, and facing left or right
             if (players[p].directionFacing == 1){
                 if (players[p].x >= players[p].attackPos[0]){
+                    // If still beyond starting pos of attack
                     players[p].velocity[0] += ag;
                     players[p].x += players[p].velocity[0];
                 } else{
+                    // If
                     players[p].x = players[p].attackPos[0];
                     players[p].isAttacking = false;
                     players[p].velocity[0] = players[p].attackVelocity[0];
@@ -804,15 +797,36 @@ function paintPlayers(){
         }
     }
 
-    // paint the player tag
     for (var p = 0; p < players.length; p++){
+        // paint the player's tag
         paintTag(players[p],players[p].x-players[p].radius*2,players[p].y-players[p].radius*3);
-        ctx.beginPath();
-        ctx.arc(players[p].x,players[p].y,players[p].radius,0,2*Math.PI);
-        ctx.fillStyle = players[p].color;
-        ctx.fill();
-        ctx.closePath();
+
+        // paint the player's body
+        paintBody(players[p]);
     }
+}
+
+function paintBody(p){
+    ctx.beginPath();
+    
+    ctx.moveTo(p.x+40,p.y);
+    if (p.directionFacing == -1){
+        ctx.moveTo(p.x-p.radius, p.y);
+        ctx.lineTo(p.x+p.radius*3/4,p.y-p.radius*5/4);
+        ctx.lineTo(p.x+p.radius*3/4,p.y+p.radius*5/4);
+    } else if (p.directionFacing == 1){
+        ctx.moveTo(p.x+p.radius, p.y);
+        ctx.lineTo(p.x-p.radius*3/4,p.y-p.radius*5/4);
+        ctx.lineTo(p.x-p.radius*3/4,p.y+p.radius*5/4);
+    } else{
+        ctx.moveTo(p.x, p.y+p.radius);
+        ctx.lineTo(p.x-p.radius,p.y-p.radius);
+        ctx.lineTo(p.x+p.radius,p.y-p.radius);
+    }
+    
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.closePath();
 }
 
 function weightCircle(x, y, r, a){
