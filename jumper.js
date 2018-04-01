@@ -39,7 +39,7 @@ var mutateChance = 1; // integer representing percentage from 0 to 100
 var contests = [];          // a list of all current contests
                             //  the last item will be a human contest
                             //  where a human player vs. AIs
-var numContests = 200;      // number of simultaneous contests (not including the human contest)
+var numContests = 80;      // number of simultaneous contests (not including the human contest)
 var playersPerContest = 2;  // number of players per contest
 var networks = [];          // a list of all current networks
 var testing = true;        // When true, only one contest will be visualised
