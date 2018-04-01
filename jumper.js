@@ -36,20 +36,25 @@ var generation = 0;   // current generation
 var mutateChance = 1; // integer representing percentage from 0 to 100
 
 // Gameplay properties
-var contests = [];         // a list of all current contests
-var numContests = 200;     // number of simultaneous contests
-var playersPerContest = 2; // number of players per contest
-var networks = [];         // a list of all current networks
-var testing = false;        // When true, only one contest will be visualised
-                           // 'Player 0' in that contest will also be controlled
-                           // by the human player
+var contests = [];          // a list of all current contests
+                            //  the last item will be a human contest
+                            //  where a human player vs. AIs
+var numContests = 200;      // number of simultaneous contests (not including the human contest)
+var playersPerContest = 2;  // number of players per contest
+var networks = [];          // a list of all current networks
+var testing = true;        // When true, only one contest will be visualised
+                            // 'Player 0' in that contest will also be controlled
+                            // by the human player
+
+// Neural network properties
+var numNodes = [6,5,5] // number of nodes in each layer
 
 // Other Visualisations
 var graphAvg;
 var graphBest;
 var avgScores = [];
 var bestScores = [];
-var bestNetwork = createCanvas(200, 200, "white", "bestNetwork"); // the canvas for the best network;
+var bestNetworkVis = createCanvas(200, 200, "white", "bestNetwork"); // the canvas for the best network;
 
 function main(){
     // Increment the timer
@@ -73,38 +78,48 @@ function resetWorld(){
     if (generation == 1){
         // Generate networks
         for (var n = 0; n < numContests*playersPerContest; n++){
-            networks.push(new Network([6,5,5]));
+            networks.push(new Network(numNodes));
         }
         
         // Paint a random network as the best network, since none have
         //   been tested yet.
-        networks[0].draw(bestNetwork);
+        networks[0].draw(bestNetworkVis);
     } else{
         // Draw the best network
-        getBestNetwork().draw(bestNetwork);
+        var bestNetwork = getBestNetwork();
+        bestNetwork.draw(bestNetworkVis);
 
         // Reproduce networks;
         networks = reproduce(networks);
     }
 
-
     // Create contests
     networks = shuffle(networks);
     contests = [];
-    for (var c = 0; c < numContests; c++){
+    for (var c = 0; c < numContests+1; c++){
         chosenNetworks = [];
         for (var n = 0; n < playersPerContest; n++){
             chosenNetworks.push(networks[c*playersPerContest+n]);    
         }
         contests.push(new Contest(chosenNetworks));
     }
+    
+    // Adjust the last contest (the human contest)
+    var humanContestNetworks = [];
+    var bestNetwork = getBestNetwork();
+    for (var p = 0; p < playersPerContest; p++){
+        humanContestNetworks.push(genNetwork(getGenes(bestNetwork)));
+    }
+    contests[contests.length-1] = new Contest(humanContestNetworks);
 
+    // Create the clouds
     clouds = [];
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
     clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
     
+    // Create the stage
     stage = new Stage(canvas.width*0.15,
                       canvas.height*0.9,
                       canvas.width*0.70,
@@ -353,8 +368,7 @@ function overlap(a, b){
 
 function placePlayers(){
     for (var c = 0; c < contests.length; c++){
-        var players = [];
-        players = contests[c].players;
+        var players = contests[c].players;
         for (var p = 0; p < players.length; p++){
             players[p].x = stage.x+players[p].radius+stage.width*(p/(players.length-1));
             
@@ -366,9 +380,6 @@ function placePlayers(){
 
             players[p].startX = players[p].x;
             players[p].startY = players[p].y;
-
-            // sink player slightly into ground
-            //players[p].y += players[p].radius*2*0.08;
         }
     }
 }
@@ -493,7 +504,7 @@ function canMove(p, d){
 function checkKey(e){
     e = e || window.event;
 
-    var players = contests[0].players;
+    var players = contests[contests.length-1].players;
     
     if (e.keyCode == '38') players[1].jump(); 
     if (e.keyCode == '66') players[1].attack();
@@ -535,6 +546,7 @@ function updateCanvas(){
     requestID = undefined;
     ctx.clearRect(0,0,canvas.width,canvas.height);
     
+    // For each contest (including human contest)
     for (var c = 0; c < contests.length; c++){
         if (contests[c].isOver){
             var players = contests[c].players;
@@ -561,7 +573,7 @@ function updateCanvas(){
     paintTime();
     paintGen();
 
-    if (testing) paintNetwork(contests[0]);
+    if (testing) paintNetwork(contests[contests.length-1]);
 
     if (time >= maxTime){
         // Update the graph
@@ -624,12 +636,11 @@ function secondPlayerAction(contest){
 
 // n == current contest number
 function firstPlayerAction(contest,n){
-    if (!(n == 0 && testing)){
-    //if (contest != contests[0]){
+    // if not the human contest
+    if (!(n == contests.length-1)){
         var n = contest.networks[0];
         var out = n.feedforward([contest.players[1].x, contest.players[1].y, contest.players[0].x, contest.players[0].y, contest.players[0].directionFacing, contest.players[0].direction]);
         takeAction(out, contest.players[0]);
-    //}
     }
 }
 
@@ -782,17 +793,18 @@ function toggleTesting(){
 }
 
 function paintPlayers(){
-    // paint the player tag
     var players = [];
-    for (var c = 0; c < contests.length; c++){
-        players.push.apply(players,contests[c].players);
-    }
-
-    // If current round is a testing session, only paint contest 0
+    // If current round is a testing session, only paint the human contest
+    // Otherwise paint every contest beside the human contest
     if (testing){
-        var players = contests[0].players;
+        players = contests[contests.length-1].players;
+    } else{
+        for (var c = 0; c < numContests; c++){
+            players.push.apply(players,contests[c].players);
+        }
     }
 
+    // paint the player tag
     for (var p = 0; p < players.length; p++){
         paintTag(players[p],players[p].x-players[p].radius*2,players[p].y-players[p].radius*3);
         ctx.beginPath();
@@ -950,7 +962,7 @@ function Network(numNodes){
         context.fillStyle = "black";
         context.textAlign = "right";
         context.textBaseline = "top";
-        context.fillText("Score: " + this.score,canv.width*0.98, canv.height*0.02);
+        context.fillText("Score: " + Math.round(this.score*1000)/1000,canv.width*0.98, canv.height*0.02);
         context.closePath();
 
         // Draw the title
