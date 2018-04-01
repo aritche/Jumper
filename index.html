@@ -22,6 +22,7 @@
         #controls{
             border: 1px solid black;
             padding: 5px;
+            width: 143px;
             margin: 0 auto;
         }
 
@@ -40,7 +41,7 @@
         <ul>
             <li>Players can move left/right, be stationary, and jump.</li>
             <li>If a player is stationary, it can attack in the direction it is facing</li>
-            <li>If a player destroys an enemy, both players are randomly repositioned on the fighting stage</li>
+            <li>If a player destroys an enemy, the loser is repositioned on the fighting stage</li>
             <li>An individual match continues until 5 seconds has elapsed</li>
         </ul>
         <li>Scores</li>
@@ -49,7 +50,7 @@
             <li>The faster you destroy an enemy, the more points you get</li>
             <li>Lose Points by:</li>
             <ul>
-                <li>Falling off of the fighting stage</li>
+                <li>Falling off of the fighting stage (you will be respawned to your starting position)</li>
                 <li>Being destroyed</li>
                 <li>Being stationary</li>
             </ul>
@@ -93,7 +94,6 @@
     <div id="controls">
         <strong>Controls:<br></strong>
         <button id="toggle_test">Toggle Population View</button>
-        
     </div>
     <script type="text/javascript" src="jumper.js"></script>
 </html>
