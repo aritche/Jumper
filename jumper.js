@@ -7,7 +7,7 @@ var requestAnimationFrame = window.requestAnimationFrame ||
 document.getElementById('toggle_test').addEventListener('click', toggleTesting);
 
 // Canvas Properties
-var canvas = createCanvas(500, 250, 'white', 'gameArea');
+var canvas = createCanvas(500, 250, 'white', 'gameArea', 'game');
 var ctx = canvas.getContext("2d");
 
 // Simulation Properties
@@ -54,9 +54,10 @@ var graphAvg;
 var graphBest;
 var avgScores = [];
 var bestScores = [];
-graphAvg = createGraph("graphAvg", "Population Avgerage Scores", "Gen", "Score", 400,400);
-graphBest = createGraph("graphBest", "Best Individual Scores", "Gen", "Score",100,100);
-var bestNetworkVis = createCanvas(200, 200, "white", "bestNetwork"); // the canvas for the best network;
+graphAvg = createGraph("graphAvg", "Population Avgerage Scores", "Gen", "Score", 400,400, 'vis');
+graphBest = createGraph("graphBest", "Best Individual Scores", "Gen", "Score",100,100, 'vis');
+var bestNetworkVis = createCanvas(200, 200, "white", "bestNetwork", 'vis'); // the canvas for the best network;
+bestNetworkVis.style.marginTop = 10;
 
 function main(){
     // Increment the timer
@@ -521,7 +522,7 @@ function checkKey(e){
 }
 document.onkeydown = checkKey;
 
-function createCanvas(w, h, color, id){
+function createCanvas(w, h, color, id, div){
     var canvas = document.createElement('canvas');
     canvas.id = id;
     canvas.className = 'canvas';
@@ -532,7 +533,7 @@ function createCanvas(w, h, color, id){
     canvas.style.backgroundColor = color;
     canvas.style.marginBottom = '20px';
     canvas.style.marginTop = '20px';
-    document.body.appendChild(canvas);
+    document.getElementById(div).appendChild(canvas);
     return canvas;
 }
 
@@ -1108,14 +1109,18 @@ function genNetwork(genes){
 }
 
 
-function createGraph(id, title, xLabel, yLabel, w, h){
+function createGraph(id, title, xLabel, yLabel, w, h, parentDiv){
     // Create div for graph
     var div = document.createElement("div");
     div.id = id;
     div.className = 'graph';
-    document.body.appendChild(div);
 
-    // Create actual graph
+    // Add the div to the parent div (if one exists)
+    // Otherwise just append to HTML body
+    if (parentDiv) document.getElementById(parentDiv).appendChild(div);
+    else document.body.appendChild(div);
+
+    // Create actual graph (goes into the div with id = id)
     var dataArray = [[0,0]];
     var graph = new Dygraph(document.getElementById(id), dataArray,
         {
@@ -1128,7 +1133,6 @@ function createGraph(id, title, xLabel, yLabel, w, h){
             width: 300,
             showLabelsOnHighlight: false,
             rightGap: 30,
-            pixelsPerLabel: 20,
         }
     );
     return graph;

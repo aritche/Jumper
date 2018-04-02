@@ -32,6 +32,12 @@
             margin: 0 auto;
         }
 
+        #vis{
+            display: inline-block;
+            border: 2px solid black;
+            width: 870px;
+            margin:auto;
+        }
     </style>
     <meta name="viewport" content='width=600'>
     <script src="http://cdnjs.cloudflare.com/ajax/libs/dygraph/1.1.1/dygraph-combined.js"></script>
@@ -42,21 +48,21 @@
 <hr>
 </body>
     <div class="info">
-    Gameplay
+    <strong>Gameplay</strong>
         <ul>
             <li>Players can move left/right, be stationary, and jump</li>
             <li>If a player is stationary, it can attack in the direction it is facing</li>
             <li>If destroyed, you are randomly repositioned on the fighting stage</li>
             <li>An individual match continues until 5 seconds has elapsed</li>
         </ul>
-    Controls
+    <strong>Controls</strong>
         <ul>
             <li>Left/Right Arrows = Move Left/Right</li>
             <li>Down Arrow = Be Stationary</li>
             <li>Space = Jump</li>
             <li>'a' Key = Attack (only if stationary)</li>
         </ul>
-    Scores
+    <strong>Scores</strong>
         <ul>
             <li>Get points by destroying the enemy</li>
             <li>The faster you destroy an enemy, the more points you get</li>
@@ -68,11 +74,20 @@
             </ul>
         </ul>
     </div>
+
     <div id="controls">
-        <strong>Controls:<br></strong>
+        <strong>Properties:<br></strong>
         <button id="toggle_test">Toggle Population View</button>
     </div>
+
+    <div id="game"></div>
+
+    <div style="text-align: center;">
+    <div id="vis"></div>
+    </div>
+
     <script type="text/javascript" src="jumper.js"></script>
+
         <li>Machine Learning Specifics</li>
         <ul>
             <li>Each agent in initial population is controlled by its own Feedforward Neural Network</li>
