@@ -54,6 +54,8 @@ var graphAvg;
 var graphBest;
 var avgScores = [];
 var bestScores = [];
+graphAvg = createGraph("graphAvg", "Population Avgerage Scores", "Gen", "Score", 400,400);
+graphBest = createGraph("graphBest", "Best Individual Scores", "Gen", "Score",100,100);
 var bestNetworkVis = createCanvas(200, 200, "white", "bestNetwork"); // the canvas for the best network;
 
 function main(){
@@ -62,10 +64,6 @@ function main(){
 
     // Ininitate the simulation
     resetWorld();
-   
-    // Create the appropriate graphs
-    graphAvg = createGraph("graphAvg", "Population Avgerage Scores", "Gen", "Score", 400,400);
-    graphBest = createGraph("graphBest", "Best Individual Scores", "Gen", "Score",100,100);
 }
 
 // Resets the world and begins the simulation
@@ -1122,11 +1120,15 @@ function createGraph(id, title, xLabel, yLabel, w, h){
     var graph = new Dygraph(document.getElementById(id), dataArray,
         {
             // Options go here
-            //legend: 'always',
             animatedZooms: true,
             title: title,
+            titleHeight: 25,
             labels: [xLabel, yLabel],
-            //valueRange: [yMin, yMax]
+            height: 200,
+            width: 300,
+            showLabelsOnHighlight: false,
+            rightGap: 30,
+            pixelsPerLabel: 20,
         }
     );
     return graph;
