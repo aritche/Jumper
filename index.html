@@ -35,32 +35,41 @@
 <h1>Evolving Neural Networks</h1>
 <hr>
 </body>
-    <p><strong>Overview:</strong></p>
-    <ul>
-        <li>Gameplay</li>
+    Gameplay
         <ul>
-            <li>Players can move left/right, be stationary, and jump.</li>
+            <li>Players can move left/right, be stationary, and jump</li>
             <li>If a player is stationary, it can attack in the direction it is facing</li>
-            <li>If a player destroys an enemy, the loser is repositioned on the fighting stage</li>
+            <li>If destroyed, you are randomly repositioned on the fighting stage</li>
             <li>An individual match continues until 5 seconds has elapsed</li>
         </ul>
-        <li>Scores</li>
+    Controls
+        <ul>
+            <li>Left/Right Arrows = Move Left/Right</li>
+            <li>Down Arrow = Be Stationary</li>
+            <li>Space = Jump</li>
+            <li>'a' Key = Attack (only if stationary)</li>
+        </ul>
+    Scores
         <ul>
             <li>Get points by destroying the enemy</li>
             <li>The faster you destroy an enemy, the more points you get</li>
             <li>Lose Points by:</li>
             <ul>
-                <li>Falling off of the fighting stage (you will be respawned to your starting position)</li>
                 <li>Being destroyed</li>
+                <li>Falling off fighting stage (will respawn to starting pos.)</li>
                 <li>Being stationary</li>
             </ul>
         </ul>
+    <div id="controls">
+        <strong>Controls:<br></strong>
+        <button id="toggle_test">Toggle Population View</button>
+    </div>
+    <script type="text/javascript" src="jumper.js"></script>
         <li>Machine Learning Specifics</li>
         <ul>
-            <li>There is an initial population of autonomous agents</li>
-            <li>Each agent is controlled by its own Feedforward Neural Network</li>
+            <li>Each agent in initial population is controlled by its own Feedforward Neural Network</li>
             <ul>
-                <li>Inputs Nodes:</li>
+                <li>Input Nodes:</li>
                 <ul>
                     <li>Enemy x position</li>
                     <li>Enemy y position</li>
@@ -90,10 +99,9 @@
                 </ol>
             </ul>
         </ul>
-    </ul>
-    <div id="controls">
-        <strong>Controls:<br></strong>
-        <button id="toggle_test">Toggle Population View</button>
-    </div>
-    <script type="text/javascript" src="jumper.js"></script>
+        <li>Converting a Network to Gene Form:</li>
+        <ul>
+            <li>For each node in layer L, push all weights to nodes in layer L+1 to genes array</li>
+            <li>Do the above until all weights in the network are in the array</li>
+        </ul>
 </html>
