@@ -503,17 +503,18 @@ function checkKey(e){
 
     var players = contests[contests.length-1].players;
     
-    if (e.keyCode == '38') players[1].jump(); 
-    if (e.keyCode == '66') players[1].attack();
-    if (e.keyCode == '90') players[1].move(-1); 
-    if (e.keyCode == '88') players[1].move(0);
-
     if (e.keyCode == '32'){
         players[0].jump();
         e.preventDefault();
     }
-    if (e.keyCode == '39') players[0].move(1);
-    if (e.keyCode == '37') players[0].move(-1);
+    if (e.keyCode == '39'){
+        players[0].move(1);
+        e.preventDefault();
+    }
+    if (e.keyCode == '37'){
+        players[0].move(-1);
+        e.preventDefault();
+    }
     if (e.keyCode == '40'){
         players[0].move(0);
         e.preventDefault();
