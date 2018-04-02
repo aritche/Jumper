@@ -6,15 +6,15 @@ var requestAnimationFrame = window.requestAnimationFrame ||
 // determine if using touch events (mobile), or click events (desktop)
 document.getElementById('toggle_test').addEventListener('click', toggleTesting);
 
-// Canvas Properties
+// Game Canvas Properties
 var canvas = createCanvas(500, 250, 'white', 'gameArea', 'game');
 var ctx = canvas.getContext("2d");
 
 // Simulation Properties
-var time = 0; // elapsed time in seconds
+var time = 0;    // elapsed time in seconds since start of match
 var maxTime = 5; // time until world resets in seconds
-var g = 1;    // gravity
-var ag = -2;  // attack gravity. acceleration back to starting pos after an attack
+var g = 1;       // gravity
+var ag = -2;     // attack gravity. acceleration back to starting pos after an attack
 
 // Simulation Assets
 var stage;    // the fighting stage
@@ -117,10 +117,9 @@ function resetWorld(){
 
     // Create the clouds
     clouds = [];
-    clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
-    clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
-    clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
-    clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
+    for (var c = 0; c < 4; c++){
+        clouds.push(new Cloud(getRand(0,canvas.width*1.5,1),getRand(0,canvas.height,1),200,50,0.5));
+    }
     
     // Create the stage
     stage = new Stage(canvas.width*0.15,
@@ -128,7 +127,6 @@ function resetWorld(){
                       canvas.width*0.70,
                       canvas.height*0.1, 
                       "black");
-
 
     placePlayers();
     updateCanvas();
@@ -167,6 +165,7 @@ function minScore(){
     return min;
 }
 
+// Get the maximum score out of all the networks
 function maxScore(){
     var max = networks[0].score;
     for (var n = 0; n < networks.length; n++){
@@ -175,18 +174,13 @@ function maxScore(){
     return max;
 }
 
-// Shift all network scores into positive scores by adding minimum score
+// Apply some conditioning to the scores of the networks before
+//  they are used for reproduction
 function conditionScores(){
     // Treat all negative scores as zero
     for (var n = 0; n < networks.length; n++){
         if (networks[n].score < 0) networks[n].score = 0;
     }
-    
-    // Make all scores positive
-    /*var min = minScore();
-    for (var n = 0; n < networks.length; n++){
-        networks[n].score += Math.abs(min);
-    }*/
     
     // Scores are now in the range [0,max]
     var max = maxScore()+1; // '+1' is in case max score is 0
@@ -201,6 +195,647 @@ function conditionScores(){
     }
 }
 
+// Return the nextwork with the highest score
+function getBestNetwork(){
+    var bestScore;
+    var bestNetwork;
+    for (var n = 0; n < networks.length; n++){
+        if (bestScore == null || networks[n].score >= bestScore){
+            bestScore = networks[n].score;
+            bestNetwork = networks[n];
+        }
+    }
+
+    return bestNetwork;
+}
+
+// Resolve collisions between players
+function collisions(contest){
+    disputes = []; // handle all collision disputes
+    var players = contest.players;
+    for (var p = 0; p < players.length; p++){
+        if (players[p].isAttacking){
+            for (var e = 0; e < players.length; e++){
+                if (e != p){
+                    if (overlap(players[p],players[e])){
+                        disputes.push([players[p],players[e]]);
+                    }
+                }
+            }
+        }
+    }
+
+    if (disputes.length != 0){
+        var winners = [];
+        var winner;
+        var loser;
+        for (var i = 0; i < disputes.length; i++){
+            var a = disputes[i][0];
+            var b = disputes[i][1];
+            // player which attacks first will win if 2 players attack at once
+            // player that attacks first will have lowest speed (since speed starts high)
+            if (a.isAttacking && b.isAttacking){
+                winner = Math.abs(a.velocity[0]) < Math.abs(b.velocity[0]) ? a : b;
+
+                // The following code handles the case:
+                /*
+                    A attacks first, but is now turning around. 
+                    Then B attacks. Ideally B should win since it is on the offensive.
+                    However due to rubberband acceleration, A might have higher speed
+                    and could thus be declared the winner.
+                */
+                // if B is on rebound and A is not, A should win regardless of speed
+                if (Math.sign(a.velocity[0]) == Math.sign(a.directionFacing)
+                    && (Math.sign(b.velocity[0] != Math.sign(b.directionFacing)))){
+                    winner = a;
+
+                // if A is on rebound and B is not, B should win regardless of speed
+                } else if (Math.sign(b.velocity[0]) == Math.sign(b.directionFacing)
+                    && (Math.sign(a.velocity[0] != Math.sign(a.directionFacing)))){
+                    winner = b;
+                }
+            }
+            else winner = a.isAttacking ? a : b;
+            loser = winner == a ? b : a;
+
+            // Bonus reward for killing an enemy faster
+            var timeDiff = time-contest.prevWin; // number of seconds since previous win
+            var finalReward = reward*(1+(maxTime-timeDiff)/maxTime)
+            
+            // Update previous win time
+            contest.prevWin = time;
+
+            winner.network.score += finalReward;
+            loser.network.score += punishment;
+
+            winners.push(winner);
+
+            loser.resetProperties();
+
+            contest.winner = winner;
+        }
+    }
+    
+}
+
+// return True if there is an overlap between player a and b
+// Collision equation inspired by https://stackoverflow.com/a/3269471
+function overlap(a, b){
+    startAX = a.x-a.radius;
+    startAY = a.y-a.radius;
+    endAX   = a.x+a.radius;
+    endAY   = a.y+a.radius;
+
+    startBX = b.x-b.radius;
+    startBY = b.y-b.radius;
+    endBX   = b.x+b.radius;
+    endBY   = b.y+b.radius;
+
+
+    return (startAX <= endBX && startBX <= endAX) 
+        && (startAY <= endBY && startBY <= endAY);
+}
+
+// Place all players on the fighting stage
+function placePlayers(){
+    for (var c = 0; c < contests.length; c++){
+        var players = contests[c].players;
+        for (var p = 0; p < players.length; p++){
+            players[p].x = stage.x+players[p].radius+stage.width*(p/(players.length-1));
+            
+            //fix final player's position
+            if (p == players.length-1){
+                players[p].x -= players[p].radius*2;
+            }
+            players[p].y = canvas.height-(stage.height+players[p].radius);
+
+            players[p].startX = players[p].x;
+            players[p].startY = players[p].y;
+        }
+    }
+}
+
+// Creates a stage on which players can stand
+function Stage(x, y, width, height, color){
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+    this.color = color;
+    this.img = stageImage;
+}
+
+// Creates a cloud object (just for aesthetics)
+function Cloud(x, y, width, height, alpha){
+    this.x = x;
+    this.y = y
+    this.width = width;
+    this.height = height;
+    this.alpha = alpha;
+    this.velocity = -1;
+}
+
+// A Contest (competition, game, etc.) between networks.length players
+// networks is an array of neural networks. e.g. player 0 is assigned networks[0]
+function Contest(networks){
+    // A list of players in the contest
+    this.players = [];
+    for (var p = 0; p < networks.length; p++){
+        this.players.push(new Player("Player " + p, 0, colors[p%colors.length], networks[p]));
+    }
+
+    this.networks = networks;
+
+
+    this.prevWin = 0; // time value that the previous win occurred
+    
+    // Who won the contest
+    this.winner;
+}
+
+// Creates a player
+function Player(name, id, color, network){
+    this.name = name;
+    this.id = id;
+    this.color = color;
+    this.x = 0;
+    this.y = 0;
+    this.startX = 0;
+    this.startY = 0;
+
+    this.radius = 20;
+
+    this.velocity = [0,0]; // velocity x and y
+    this.move = function(direction){
+        this.direction = direction;
+    }
+
+    this.isJumping = false;
+    this.jump = function(){
+        if (!this.isJumping && !this.isAttacking){
+            this.isJumping = true;
+            this.velocity[1] = -14;
+        }
+    }
+    
+    // 1 = right, -1 = left, 0 = neutral
+    this.direction = 0; // direction of movement
+    this.directionFacing = 0; // direction of facing currently
+    this.move = function(d){
+        if (!this.isAttacking){
+            this.velocity[0] = 5*d;
+            this.direction = d;
+            if (d != 0){
+                this.directionFacing = d;
+            }
+        }
+    }
+
+    this.isAttacking = false;
+    this.attackPos = [0,0]; // pullback coordinates after an attack
+    this.attackVelocity = [0,0]; // original velocity before attack 
+    this.attack = function(){
+        // can only attack while not moving, not already attacking, and not facing down
+        if (this.direction == 0 && !this.isAttacking && this.directionFacing != 0){ 
+            this.isAttacking = true;
+            this.attackPos = [this.x,this.y];
+            this.attackVelocity = [this.velocity[0],this.velocity[1]];
+            this.velocity[0] += 20*this.directionFacing;
+        }
+    }
+
+    // Neural network used by the player
+    this.network = network;
+
+    // Resets all properties of the player but keeps score intact
+    this.resetProperties = function(){
+        this.x = getRand(stage.x+this.radius,stage.x+this.radius+stage.width,1);
+        this.y = this.startY;
+        this.velocity = [0,0];
+        this.isJumping = false;
+        this.direction = 0;
+        this.directionFacing = 0;
+        this.isAttacking = false;
+        this.attackPos = [0,0];
+    }
+}
+
+// Check what key was pressed
+function checkKey(e){
+    e = e || window.event;
+
+    var players = contests[contests.length-1].players;
+    
+    if (e.keyCode == '32'){
+        players[0].jump();
+        e.preventDefault();
+    }
+    if (e.keyCode == '39'){
+        players[0].move(1);
+        e.preventDefault();
+    }
+    if (e.keyCode == '37'){
+        players[0].move(-1);
+        e.preventDefault();
+    }
+    if (e.keyCode == '40'){
+        players[0].move(0);
+        e.preventDefault();
+    }
+    if (e.keyCode == '65') players[0].attack();
+}
+document.onkeydown = checkKey;
+
+// Create a canvas and add it to a div
+function createCanvas(w, h, color, id, div){
+    var canvas = document.createElement('canvas');
+    canvas.id = id;
+    canvas.className = 'canvas';
+    canvas.width = w*2; //resolution
+    canvas.height = h*2; //resolution
+    canvas.style.width = w; //actual width
+    canvas.style.height = h; //actual height
+    canvas.style.backgroundColor = color;
+    canvas.style.marginBottom = '20px';
+    canvas.style.marginTop = '20px';
+    document.getElementById(div).appendChild(canvas);
+    return canvas;
+}
+
+// Main simulation and canvas painting loop
+function updateCanvas(){
+    // Clear the canvas
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    
+    // For each contest (including human contest)
+    for (var c = 0; c < contests.length; c++){
+        collisions(contests[c]);
+        movePlayers(contests[c]);
+        firstPlayerAction(contests[c],c);
+        secondPlayerAction(contests[c]);
+    }
+
+    moveClouds();
+    paintBackdrop();
+    paintClouds();
+    paintDanger();
+    paintPlayers();
+    paintStages();
+    paintTime();
+    paintGen();
+
+    // Paint info about the neural network controlling the AI
+    if (testing) paintNetwork(contests[contests.length-1]);
+
+    if (time >= maxTime){
+        // Update the graph
+        avgScores.push([generation,getAverage()]);
+        bestScores.push([generation,getBestNetwork().score]);
+        graphAvg.updateOptions({'file': avgScores});
+        graphBest.updateOptions({'file': bestScores});
+
+        resetWorld();
+    } else{
+        // loop
+        requestAnimationFrame(updateCanvas);
+    }
+}
+
+// Pain info about the neural network controlling the AI
+function paintNetwork(c){
+    ctx.beginPath();
+    ctx.font = "22px Arial";
+    ctx.fillStyle = "black";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+
+    // Paint the live output from the neural network as circles of different intensity
+    var out = c.players[1].network.feedforward([c.players[0].x, c.players[0].y, c.players[1].x, c.players[1].y, c.players[1].directionFacing, c.players[1].direction]);
+    var max = out[0];
+    var maxI = 0;
+    var min = out[0];
+    var minI = 0;
+    var total = 0;
+    for (var i = 0; i < out.length; i++){
+        weightCircle(canvas.width*0.5+i*30-2*30,canvas.height*0.05,10,out[i]);
+        if (out[i] > max){
+            max = out[i];
+            maxI = i;
+        }
+        if (out[i] < min){
+            min = out[i];
+            minI = i;
+        }
+        total += out[i];
+    }
+
+    // Paint the current action taken by the player
+    //  as well as the strength of this output as a
+    //  percentage of all of the outputs
+    var a;
+    if (maxI == 0) a = 'Moving Left';
+    if (maxI == 1) a = 'Moving Right';
+    if (maxI == 2) a = 'Stationary';
+    if (maxI == 3) a = 'Jumping';
+    if (maxI == 4) a = 'Attacking';
+    a += ' ' + Math.round(max/total*100) + '%';
+    ctx.fillStyle = "blue";
+    ctx.fillText(a, c.players[1].x, c.players[1].y-110);
+    ctx.closePath();
+}
+
+// Action taken by the first player, where n = contest number
+function firstPlayerAction(contest,n){
+    // if not the human contest
+    if (!(n == contests.length-1)){
+        var n = contest.networks[0];
+        var out = n.feedforward([contest.players[1].x, contest.players[1].y, contest.players[0].x, contest.players[0].y, contest.players[0].directionFacing, contest.players[0].direction]);
+        takeAction(out, contest.players[0]);
+    }
+}
+
+// Action taken by the second player
+function secondPlayerAction(contest){
+    var n = contest.networks[1];
+    var out = n.feedforward([contest.players[0].x, contest.players[0].y, contest.players[1].x, contest.players[1].y, contest.players[1].directionFacing, contest.players[1].direction]);
+    takeAction(out, contest.players[1]);
+}
+
+// Given the output of a neural network, make player do an action
+function takeAction(output, player){
+    var max = 0;
+    var maxI = 0;
+    for (var i = 0; i < output.length; i++){
+        if (output[i] >= max){
+            max = output[i];
+            maxI = i;
+        }   
+    }
+
+    if (maxI == 0)      player.move(-1);
+    else if (maxI == 1) player.move(1);
+    else if (maxI == 2) player.move(0);
+    else if (maxI == 3) player.jump();
+    else                player.attack();
+}
+
+// Move players in a contest
+function movePlayers(contest){
+    var players = contest.players;
+
+    for (var p = 0; p < players.length; p++){
+        if (players[p].velocity[0] == 0 && players[p].velocity[1] == 0) players[p].network.score += stationaryPunishment;
+        // if we will reach the ground on the next velocity step
+        // or also applies if we are currently on the ground due to gravity
+        if (players[p].y + players[p].velocity[1] + players[p].radius >= stage.y){
+            // check if fell off fighting stage
+            if (players[p].x < stage.x || players[p].x > stage.x+stage.width){
+                players[p].network.score += punishment;
+                players[p].x = players[p].startX;
+            } else{
+                // place player on the ground
+                players[p].y = stage.y - players[p].radius;
+                // stop movement
+                players[p].velocity[1] = 0;
+                players[p].isJumping = false;
+            }
+        } else{
+            // update velocity due to gravity
+            players[p].velocity[1] += g;
+            // update position based on new velocity
+            players[p].y += players[p].velocity[1];
+
+
+        }
+        // update x-position
+        if (players[p].isAttacking && players[p].direction == 0){
+            // If attacking, stationary, and facing left or right
+            if (players[p].directionFacing == 1){
+                if (players[p].x >= players[p].attackPos[0]){
+                    // If still beyond starting pos of attack
+                    players[p].velocity[0] += ag;
+                    players[p].x += players[p].velocity[0];
+                } else{
+                    // If
+                    players[p].x = players[p].attackPos[0];
+                    players[p].isAttacking = false;
+                    players[p].velocity[0] = players[p].attackVelocity[0];
+                }
+            } else{
+                if (players[p].x <= players[p].attackPos[0]){
+                    players[p].velocity[0] -= ag;
+                    players[p].x += players[p].velocity[0];
+                } else{
+                    players[p].x = players[p].attackPos[0];
+                    players[p].isAttacking = false;
+                    players[p].velocity[0] = players[p].attackVelocity[0];
+                }
+            }
+        } else{
+            players[p].x += players[p].velocity[0];
+        }
+    }
+}
+
+// Move the clouds
+function moveClouds(){
+    for (var c = 0; c < clouds.length; c++){
+        clouds[c].x += clouds[c].velocity;
+        if (clouds[c].x+clouds[c].width < 0){
+            clouds[c].x = canvas.width+getRand(0,canvas.width/2,1);
+        }
+    }
+}
+
+// Paint the fighting stage
+function paintStages(){
+    ctx.beginPath();
+    ctx.fillStyle = ctx.createPattern(stage.img,"repeat");
+    ctx.fillRect(stage.x, stage.y, stage.width, stage.height);
+    ctx.closePath();
+}
+
+// Paint the current generation
+function paintGen(){
+    ctx.beginPath();
+    ctx.font = "30px Arial";
+    ctx.fillStyle = "black";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText("Generation: " + generation,canvas.width*0.02, canvas.height*0.02);
+    ctx.closePath();
+} 
+
+// Paint the current time
+function paintTime(){
+    ctx.beginPath();
+    ctx.font = "30px Arial";
+    ctx.fillStyle = "black";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "top";
+    ctx.fillText("Time: " + time,canvas.width*0.98, canvas.height*0.02);
+    ctx.closePath();
+}
+
+// Paint the clouds
+function paintClouds(){
+    for (var c = 0; c < clouds.length; c++){
+        ctx.beginPath();
+        ctx.fillStyle= "rgba(255,255,255," + clouds[c].alpha + ")";
+        ctx.fillRect(clouds[c].x,clouds[c].y,clouds[c].width,clouds[c].height);
+        ctx.closePath();
+    }
+}
+
+// Paint the backdrop
+function paintBackdrop(){
+    ctx.beginPath();
+    ctx.fillStyle="lightblue";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.closePath();
+}
+
+// Paint the danger zone
+function paintDanger(){
+    ctx.beginPath();
+    ctx.fillStyle = ctx.createPattern(dangerImage,"repeat");
+    ctx.fillRect(0,canvas.height*0.95,canvas.width,canvas.height);
+    ctx.closePath();
+}
+
+// Toggle testing mode
+function toggleTesting(){
+    testing = testing ? false : true;
+}
+
+// Paint players
+function paintPlayers(){
+    var players = [];
+    // If current round is a testing session, only paint the human contest
+    // Otherwise paint every contest beside the human contest
+    if (testing){
+        players = contests[contests.length-1].players;
+    } else{
+        for (var c = 0; c < numContests; c++){
+            players.push.apply(players,contests[c].players);
+        }
+    }
+
+    for (var p = 0; p < players.length; p++){
+        // paint the player's tag
+        paintTag(players[p],players[p].x-players[p].radius*2,players[p].y-players[p].radius*3);
+
+        // paint the player's body
+        paintBody(players[p]);
+    }
+}
+
+// Paint the body of a player
+function paintBody(p){
+    ctx.beginPath();
+    
+    // Paint the triangle in the relevant direction
+    ctx.moveTo(p.x+40,p.y);
+    if (p.directionFacing == -1){
+        ctx.moveTo(p.x-p.radius, p.y);
+        ctx.lineTo(p.x+p.radius*3/4,p.y-p.radius*5/4);
+        ctx.lineTo(p.x+p.radius*3/4,p.y+p.radius*5/4);
+    } else if (p.directionFacing == 1){
+        ctx.moveTo(p.x+p.radius, p.y);
+        ctx.lineTo(p.x-p.radius*3/4,p.y-p.radius*5/4);
+        ctx.lineTo(p.x-p.radius*3/4,p.y+p.radius*5/4);
+    } else{
+        ctx.moveTo(p.x, p.y+p.radius);
+        ctx.lineTo(p.x-p.radius,p.y-p.radius);
+        ctx.lineTo(p.x+p.radius,p.y-p.radius);
+    }
+    
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.closePath();
+}
+
+// Paint a circle of a particular alpha = 'a'
+function weightCircle(x, y, r, a){
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,2*Math.PI);
+    ctx.fillStyle = "rgba(0,0,0," + a + ")";
+    ctx.fill();
+    ctx.closePath();
+}
+
+// Paint the name tag on top of a player
+function paintTag(p, x,y){
+    // paint the text
+    ctx.font = p.radius + "px Arial";
+    var fontWidth = ctx.measureText(p.name).width;
+    var fontHeight = p.radius * 1.286;
+
+    ctx.beginPath();
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(x-fontWidth*0.05,y-fontHeight*0.05,fontWidth*1.1,fontHeight*1.1);
+    ctx.closePath();
+
+    // Paint player's name
+    ctx.fillStyle = "white";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(p.name,x,y);
+
+    // Paint player's score
+    if (p.network.score > 0)  ctx.fillStyle = "green";
+    if (p.network.score == 0) ctx.fillStyle = "white";
+    if (p.network.score < 0)  ctx.fillStyle = "red";
+    ctx.textAlign = "center";
+    ctx.fillText(Math.round(p.network.score*100)/100,x+fontWidth/2,y-fontHeight );
+}
+
+// Returns a random number in range min (incl.) max (excl.)
+// Third parameter specifies if you want an integer
+function getRand(min, max, wantInt){
+    if (wantInt){
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min)) + min;
+    } else{
+        return Math.random() * (max - min) + min;
+    }
+}
+
+// Add a graph to parentDiv via the Dygraphs library
+function createGraph(id, title, xLabel, yLabel, w, h, parentDiv){
+    // Create div for graph
+    var div = document.createElement("div");
+    div.id = id;
+    div.className = 'graph';
+
+    // Add the div to the parent div (if one exists)
+    // Otherwise just append to HTML body
+    if (parentDiv) document.getElementById(parentDiv).appendChild(div);
+    else document.body.appendChild(div);
+
+    // Create actual graph (goes into the div with id = id)
+    var dataArray = [[0,0]];
+    var graph = new Dygraph(document.getElementById(id), dataArray,
+        {
+            // Options go here
+            animatedZooms: true,
+            title: title,
+            titleHeight: 25,
+            labels: [xLabel, yLabel],
+            height: 200,
+            width: 300,
+            showLabelsOnHighlight: false,
+            rightGap: 30,
+        }
+    );
+    return graph;
+}
+
+// =============== GENETIC ALGORITHM CODE ==============
+// =====================================================
+
+// Generate the next population via 1-point crossover
 function reproduce(nets){
     // Make sure the scores of each network are zero before passing back
     var pop = [];
@@ -269,619 +904,58 @@ function createSelectionPool(nets){
     return pool;
 }
 
-function getBestNetwork(){
-    var bestScore;
-    var bestNetwork;
-    for (var n = 0; n < networks.length; n++){
-        if (bestScore == null || networks[n].score >= bestScore){
-            bestScore = networks[n].score;
-            bestNetwork = networks[n];
+/*
+    Get the genes for a network 'n'
+    GENE STRUCTURE:
+    Network = [2, 3, 2]
+    Nodes:
+        Layer 0: 00, 01
+        Layer 1: 10, 11, 12
+        Layer 2: 20, 21
+
+             Layer Sizes                      Weights between nodes
+              v------v  v-----------------------------------------------------------------v
+    Genes: [3, 2, 3, 2, 00->10, 00->11, 00->12, 01->10, 01->11, 01->12, ..., 12->20, 12->21]
+            ^num layers
+        where 'a->b' indicates the weight between node a to b
+*/
+function getGenes(n){
+    var layerSizes = n.numNodes; // number of nodes in each layer [a, b, c] 
+    var numLayers = layerSizes.length;
+    var genes = [numLayers];
+    for (var l = 0; l < numLayers; l++){
+        genes.push(layerSizes[l]);
+    }
+
+    var nodes = n.nodes;
+    for (var l = 0; l < numLayers; l++){
+        for (var n = 0; n < layerSizes[l]; n++){
+            genes.push.apply(genes, nodes[l][n].weights);
         }
     }
 
-    return bestNetwork;
+    return genes;
 }
 
-function collisions(contest){
-    disputes = []; // handle all collision disputes
-    var players = contest.players;
-    for (var p = 0; p < players.length; p++){
-        if (players[p].isAttacking){
-            for (var e = 0; e < players.length; e++){
-                if (e != p){
-                    if (overlap(players[p],players[e])){
-                        disputes.push([players[p],players[e]]);
-                    }
-                }
+// Generate a network given its genes
+function genNetwork(genes){
+    var numLayers = genes.shift();
+    var layerSizes = [];
+    for (var l = 0; l < numLayers; l++){
+        layerSizes.push(genes.shift()); 
+    }
+
+    var net = new Network(layerSizes);
+    var pos = 0;
+    for (var l = 0; l < numLayers-1; l++){
+        for (var n = 0; n < layerSizes[l]; n++){
+            for (var n_dest = 0; n_dest < layerSizes[l+1]; n_dest++){
+                net.setWeight(l, n, n_dest, genes[pos++]) ;   
             }
         }
     }
-
-    if (disputes.length != 0){
-        var winners = [];
-        var winner;
-        var loser;
-        for (var i = 0; i < disputes.length; i++){
-            var a = disputes[i][0];
-            var b = disputes[i][1];
-            // player which attacks first will win if 2 players attack at once
-            // player that attacks first will have lowest speed (since speed starts high)
-            if (a.isAttacking && b.isAttacking){
-                winner = Math.abs(a.velocity[0]) < Math.abs(b.velocity[0]) ? a : b;
-
-                // The following code handles the case:
-                /*
-                    A attacks first, but is now turning around. 
-                    Then B attacks. Ideally B should win since it is on the offensive.
-                    However due to rubberband acceleration, A might have higher speed
-                    and could thus be declared the winner.
-                */
-                // if B is on rebound and A is not, A should win regardless of speed
-                if (Math.sign(a.velocity[0]) == Math.sign(a.directionFacing)
-                    && (Math.sign(b.velocity[0] != Math.sign(b.directionFacing)))){
-                    winner = a;
-
-                // if A is on rebound and B is not, B should win regardless of speed
-                } else if (Math.sign(b.velocity[0]) == Math.sign(b.directionFacing)
-                    && (Math.sign(a.velocity[0] != Math.sign(a.directionFacing)))){
-                    winner = b;
-                }
-            }
-            else winner = a.isAttacking ? a : b;
-            loser = winner == a ? b : a;
-
-            // Bonus reward for killing an enemy faster
-            var timeDiff = time-contest.prevWin; // number of seconds since previous win
-            var finalReward = reward*(1+(maxTime-timeDiff)/maxTime)
-            
-            // Update previous win time
-            contest.prevWin = time;
-
-            winner.network.score += finalReward;
-            loser.network.score += punishment;
-
-            winners.push(winner);
-
-            loser.resetProperties();
-
-            contest.winner = winner;
-        }
-        //players = winners;
-    }
-    
+    return net;
 }
-
-// return True if there is an overlap between player a and b
-// Collision equation inspired by https://stackoverflow.com/a/3269471
-function overlap(a, b){
-    startAX = a.x-a.radius;
-    startAY = a.y-a.radius;
-    endAX   = a.x+a.radius;
-    endAY   = a.y+a.radius;
-
-    startBX = b.x-b.radius;
-    startBY = b.y-b.radius;
-    endBX   = b.x+b.radius;
-    endBY   = b.y+b.radius;
-
-
-    return (startAX <= endBX && startBX <= endAX) 
-        && (startAY <= endBY && startBY <= endAY);
-}
-
-function placePlayers(){
-    for (var c = 0; c < contests.length; c++){
-        var players = contests[c].players;
-        for (var p = 0; p < players.length; p++){
-            players[p].x = stage.x+players[p].radius+stage.width*(p/(players.length-1));
-            
-            //fix final player's position
-            if (p == players.length-1){
-                players[p].x -= players[p].radius*2;
-            }
-            players[p].y = canvas.height-(stage.height+players[p].radius);
-
-            players[p].startX = players[p].x;
-            players[p].startY = players[p].y;
-        }
-    }
-}
-
-function Stage(x, y, width, height, color){
-    this.x = x;
-    this.y = y;
-    this.width = width;
-    this.height = height;
-    this.color = color;
-    this.img = stageImage;
-}
-
-function Cloud(x, y, width, height, alpha){
-    this.x = x;
-    this.y = y
-    this.width = width;
-    this.height = height;
-    this.alpha = alpha;
-    this.velocity = -1;
-}
-
-// A Contest (competition, game, etc.) between networks.length players
-// networks is an array of neural networks. e.g. player 0 is assigned networks[0]
-function Contest(networks){
-    // A list of players in the contest
-    this.players = [];
-    for (var p = 0; p < networks.length; p++){
-        this.players.push(new Player("Player " + p, 0, colors[p%colors.length], networks[p]));
-    }
-
-    this.networks = networks;
-
-
-    this.prevWin = 0; // time value that the previous win occurred
-    
-    // Who won the contest
-    this.winner;
-}
-
-
-// direction 'n' = neutral
-function Player(name, id, color, network){
-    this.name = name;
-    this.id = id;
-    this.color = color;
-    this.x = 0;
-    this.y = 0;
-    this.startX = 0;
-    this.startY = 0;
-
-    this.radius = 20;
-
-    this.velocity = [0,0]; // velocity x and y
-
-    this.move = function(direction){
-        this.direction = direction;
-    }
-
-    this.isJumping = false;
-
-    this.jump = function(){
-        if (!this.isJumping && !this.isAttacking){
-            this.isJumping = true;
-            this.velocity[1] = -14;
-        }
-    }
-    
-    // 1 = right, -1 = left, 0 = neutral
-    this.direction = 0; // direction of movement
-    this.directionFacing = 0; // direction of facing currently
-
-    this.move = function(d){
-        if (!this.isAttacking){
-            this.velocity[0] = 5*d;
-            this.direction = d;
-            if (d != 0){
-                this.directionFacing = d;
-            }
-        }
-    }
-
-    this.isAttacking = false;
-    this.attackPos = [0,0]; // pullback coordinates after an attack
-    this.attackVelocity = [0,0]; // original velocity before attack 
-    this.attack = function(){
-        // can only attack while not moving, not already attacking, and not facing down
-        if (this.direction == 0 && !this.isAttacking && this.directionFacing != 0){ 
-            this.isAttacking = true;
-            this.attackPos = [this.x,this.y];
-            this.attackVelocity = [this.velocity[0],this.velocity[1]];
-            this.velocity[0] += 20*this.directionFacing;
-        }
-        //this.radius *= 1.3;
-    }
-
-    // Neural network used by the player
-    this.network = network;
-
-    // Resets all properties of the player but keeps score intact
-    this.resetProperties = function(){
-        this.x = getRand(stage.x+this.radius,stage.x+this.radius+stage.width,1);
-        this.y = this.startY;
-        this.velocity = [0,0];
-        this.isJumping = false;
-        this.direction = 0;
-        this.directionFacing = 0;
-        this.isAttacking = false;
-        this.attackPos = [0,0];
-    }
-}
-
-
-// return true if player p can move in direction d
-function canMove(p, d){
-
-}
-
-function checkKey(e){
-    e = e || window.event;
-
-    var players = contests[contests.length-1].players;
-    
-    if (e.keyCode == '32'){
-        players[0].jump();
-        e.preventDefault();
-    }
-    if (e.keyCode == '39'){
-        players[0].move(1);
-        e.preventDefault();
-    }
-    if (e.keyCode == '37'){
-        players[0].move(-1);
-        e.preventDefault();
-    }
-    if (e.keyCode == '40'){
-        players[0].move(0);
-        e.preventDefault();
-    }
-    if (e.keyCode == '65') players[0].attack();
-}
-document.onkeydown = checkKey;
-
-function createCanvas(w, h, color, id, div){
-    var canvas = document.createElement('canvas');
-    canvas.id = id;
-    canvas.className = 'canvas';
-    canvas.width = w*2; //resolution
-    canvas.height = h*2; //resolution
-    canvas.style.width = w; //actual width
-    canvas.style.height = h; //actual height
-    canvas.style.backgroundColor = color;
-    canvas.style.marginBottom = '20px';
-    canvas.style.marginTop = '20px';
-    document.getElementById(div).appendChild(canvas);
-    return canvas;
-}
-
-
-var requestID;
-function updateCanvas(){
-    requestID = undefined;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    
-    // For each contest (including human contest)
-    for (var c = 0; c < contests.length; c++){
-        collisions(contests[c]);
-        movePlayers(contests[c]);
-        firstPlayerAction(contests[c],c);
-        secondPlayerAction(contests[c]);
-        updatePlayerScores(contests[c]);
-    }
-
-
-    moveClouds();
-
-    paintBackdrop();
-    paintClouds();
-    paintDanger();
-    paintPlayers();
-    paintStages();
-    paintTime();
-    paintGen();
-
-    if (testing) paintNetwork(contests[contests.length-1]);
-
-    if (time >= maxTime){
-        // Update the graph
-        avgScores.push([generation,getAverage()]);
-        bestScores.push([generation,getBestNetwork().score]);
-        graphAvg.updateOptions({'file': avgScores});
-        graphBest.updateOptions({'file': bestScores});
-
-        resetWorld();
-    } else{
-        requestAnimationFrame(updateCanvas);
-    }
-}
-
-function paintNetwork(c){
-    ctx.beginPath();
-    ctx.font = "22px Arial";
-    ctx.fillStyle = "black";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    var out = c.players[1].network.feedforward([c.players[0].x, c.players[0].y, c.players[1].x, c.players[1].y, c.players[1].directionFacing, c.players[1].direction]);
-    var max = out[0];
-    var maxI = 0;
-    var min = out[0];
-    var minI = 0;
-    var total = 0;
-    for (var i = 0; i < out.length; i++){
-        weightCircle(canvas.width*0.5+i*30-2*30,canvas.height*0.05,10,out[i]);
-        if (out[i] > max){
-            max = out[i];
-            maxI = i;
-        }
-        if (out[i] < min){
-            min = out[i];
-            minI = i;
-        }
-        total += out[i];
-    }
-
-    var a;
-    if (maxI == 0) a = 'Moving Left';
-    if (maxI == 1) a = 'Moving Right';
-    if (maxI == 2) a = 'Stationary';
-    if (maxI == 3) a = 'Jumping';
-    if (maxI == 4) a = 'Attacking';
-    a += ' ' + Math.round(max/total*100) + '%';
-
-
-    ctx.fillStyle = "blue";
-    ctx.fillText(a, c.players[1].x, c.players[1].y-110);
-    ctx.closePath();
-}
-
-
-function secondPlayerAction(contest){
-    var n = contest.networks[1];
-    var out = n.feedforward([contest.players[0].x, contest.players[0].y, contest.players[1].x, contest.players[1].y, contest.players[1].directionFacing, contest.players[1].direction]);
-    takeAction(out, contest.players[1]);
-}
-
-// n == current contest number
-function firstPlayerAction(contest,n){
-    // if not the human contest
-    if (!(n == contests.length-1)){
-        var n = contest.networks[0];
-        var out = n.feedforward([contest.players[1].x, contest.players[1].y, contest.players[0].x, contest.players[0].y, contest.players[0].directionFacing, contest.players[0].direction]);
-        takeAction(out, contest.players[0]);
-    }
-}
-
-function updatePlayerScores(contest){
-    var players = contest.players;
-    for (var p = 0; p < players.length; p++){
-        players[p].network.score += timePunishment;
-    }
-}
-
-// given an output of a neural network, make player do an action
-function takeAction(output, player){
-    var max = 0;
-    var maxI = 0;
-    for (var i = 0; i < output.length; i++){
-        if (output[i] >= max){
-            max = output[i];
-            maxI = i;
-        }   
-    }
-
-    if (maxI == 0){
-        player.move(-1);
-    } else if (maxI == 1){
-        player.move(1);
-    } else if (maxI == 2){
-        player.move(0);
-    } else if (maxI == 3){
-        player.jump();
-    } else{
-        player.attack();
-    }
-}
-
-function movePlayers(contest){
-    var players = contest.players;
-
-    for (var p = 0; p < players.length; p++){
-        if (players[p].velocity[0] == 0 && players[p].velocity[1] == 0) players[p].network.score += stationaryPunishment;
-        // if we will reach the ground on the next velocity step
-        // or also applies if we are currently on the ground due to gravity
-        if (players[p].y + players[p].velocity[1] + players[p].radius >= stage.y){
-            // check if fell off fighting stage
-            if (players[p].x < stage.x || players[p].x > stage.x+stage.width){
-                players[p].network.score += punishment;
-                players[p].x = players[p].startX;
-            } else{
-                // place player on the ground
-                players[p].y = stage.y - players[p].radius;
-                // stop movement
-                players[p].velocity[1] = 0;
-                players[p].isJumping = false;
-            }
-        } else{
-            // update velocity due to gravity
-            players[p].velocity[1] += g;
-            // update position based on new velocity
-            players[p].y += players[p].velocity[1];
-
-
-        }
-        // update x-position
-        if (players[p].isAttacking && players[p].direction == 0){
-            // If attacking, stationary, and facing left or right
-            if (players[p].directionFacing == 1){
-                if (players[p].x >= players[p].attackPos[0]){
-                    // If still beyond starting pos of attack
-                    players[p].velocity[0] += ag;
-                    players[p].x += players[p].velocity[0];
-                } else{
-                    // If
-                    players[p].x = players[p].attackPos[0];
-                    players[p].isAttacking = false;
-                    players[p].velocity[0] = players[p].attackVelocity[0];
-                }
-            } else{
-                if (players[p].x <= players[p].attackPos[0]){
-                    players[p].velocity[0] -= ag;
-                    players[p].x += players[p].velocity[0];
-                } else{
-                    players[p].x = players[p].attackPos[0];
-                    players[p].isAttacking = false;
-                    players[p].velocity[0] = players[p].attackVelocity[0];
-                }
-            }
-        } else{
-            players[p].x += players[p].velocity[0];
-        }
-    }
-}
-
-function moveClouds(){
-    for (var c = 0; c < clouds.length; c++){
-        clouds[c].x += clouds[c].velocity;
-        if (clouds[c].x+clouds[c].width < 0){
-            clouds[c].x = canvas.width+getRand(0,canvas.width/2,1);
-        }
-    }
-}
-
-function paintStages(){
-    ctx.beginPath();
-    ctx.fillStyle = ctx.createPattern(stage.img,"repeat");
-    ctx.fillRect(stage.x, stage.y, stage.width, stage.height);
-    ctx.closePath();
-}
-
-function paintGen(){
-    ctx.beginPath();
-    ctx.font = "30px Arial";
-    ctx.fillStyle = "black";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillText("Generation: " + generation,canvas.width*0.02, canvas.height*0.02);
-    ctx.closePath();
-} 
-
-function paintTime(){
-    ctx.beginPath();
-    ctx.font = "30px Arial";
-    ctx.fillStyle = "black";
-    ctx.textAlign = "right";
-    ctx.textBaseline = "top";
-    ctx.fillText("Time: " + time,canvas.width*0.98, canvas.height*0.02);
-    ctx.closePath();
-}
-
-function paintClouds(){
-    for (var c = 0; c < clouds.length; c++){
-        ctx.beginPath();
-        ctx.fillStyle= "rgba(255,255,255," + clouds[c].alpha + ")";
-        ctx.fillRect(clouds[c].x,clouds[c].y,clouds[c].width,clouds[c].height);
-        ctx.closePath();
-    }
-}
-
-function paintBackdrop(){
-    ctx.beginPath();
-    ctx.fillStyle="lightblue";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.closePath();
-}
-
-function paintDanger(){
-    ctx.beginPath();
-    ctx.fillStyle = ctx.createPattern(dangerImage,"repeat");
-    ctx.fillRect(0,canvas.height*0.95,canvas.width,canvas.height);
-    ctx.closePath();
-}
-
-function toggleTesting(){
-    testing = testing ? false : true;
-}
-
-function paintPlayers(){
-    var players = [];
-    // If current round is a testing session, only paint the human contest
-    // Otherwise paint every contest beside the human contest
-    if (testing){
-        players = contests[contests.length-1].players;
-    } else{
-        for (var c = 0; c < numContests; c++){
-            players.push.apply(players,contests[c].players);
-        }
-    }
-
-    for (var p = 0; p < players.length; p++){
-        // paint the player's tag
-        paintTag(players[p],players[p].x-players[p].radius*2,players[p].y-players[p].radius*3);
-
-        // paint the player's body
-        paintBody(players[p]);
-    }
-}
-
-function paintBody(p){
-    ctx.beginPath();
-    
-    ctx.moveTo(p.x+40,p.y);
-    if (p.directionFacing == -1){
-        ctx.moveTo(p.x-p.radius, p.y);
-        ctx.lineTo(p.x+p.radius*3/4,p.y-p.radius*5/4);
-        ctx.lineTo(p.x+p.radius*3/4,p.y+p.radius*5/4);
-    } else if (p.directionFacing == 1){
-        ctx.moveTo(p.x+p.radius, p.y);
-        ctx.lineTo(p.x-p.radius*3/4,p.y-p.radius*5/4);
-        ctx.lineTo(p.x-p.radius*3/4,p.y+p.radius*5/4);
-    } else{
-        ctx.moveTo(p.x, p.y+p.radius);
-        ctx.lineTo(p.x-p.radius,p.y-p.radius);
-        ctx.lineTo(p.x+p.radius,p.y-p.radius);
-    }
-    
-    ctx.fillStyle = p.color;
-    ctx.fill();
-    ctx.closePath();
-}
-
-function weightCircle(x, y, r, a){
-    ctx.beginPath();
-    ctx.arc(x,y,r,0,2*Math.PI);
-    ctx.fillStyle = "rgba(0,0,0," + a + ")";
-    ctx.fill();
-    ctx.closePath();
-}
-
-// x and y are coordinates of center
-function paintTag(p, x,y){
-    // paint the text
-    ctx.font = p.radius + "px Arial";
-    var fontWidth = ctx.measureText(p.name).width;
-    var fontHeight = p.radius * 1.286;
-
-    ctx.beginPath();
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(x-fontWidth*0.05,y-fontHeight*0.05,fontWidth*1.1,fontHeight*1.1);
-    ctx.closePath();
-
-    // Paint player's name
-    ctx.fillStyle = "white";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillText(p.name,x,y);
-
-    // Paint player's score
-    if (p.network.score > 0)  ctx.fillStyle = "green";
-    if (p.network.score == 0) ctx.fillStyle = "white";
-    if (p.network.score < 0)  ctx.fillStyle = "red";
-    ctx.textAlign = "center";
-    ctx.fillText(Math.round(p.network.score*100)/100,x+fontWidth/2,y-fontHeight );
-}
-
-// Returns a random number in range min (incl.) max (excl.)
-// Third parameter specifies if you want an integer
-function getRand(min, max, wantInt){
-    if (wantInt){
-        min = Math.ceil(min);
-        max = Math.floor(max);
-        return Math.floor(Math.random() * (max - min)) + min;
-    } else{
-        return Math.random() * (max - min) + min;
-    }
-}
-
-
-
-
 
 // =============== NEURAL NETWORKS =================
 // =================================================
@@ -889,7 +963,7 @@ function getRand(min, max, wantInt){
 // numNodes = [a, b, c] where a = number of nodes in layer 0, etc.
 function Network(numNodes){
     this.score = 0; // value of the network (for genetic algorithm)
-    this.nodes       = genNodes(numNodes);
+    this.nodes = genNodes(numNodes);
 
     // Generate weights for the nodes
     genWeights(this.nodes);
@@ -930,9 +1004,8 @@ function Network(numNodes){
         this.nodes[aLayer][aNode].weights[bNode] = w;
     }
 
-    
+    // Visualise the network on a canvas
     this.draw = function(canv){
-
         this.locations = [];
         var locations = this.locations;
         var context = canv.getContext("2d");
@@ -994,6 +1067,7 @@ function Network(numNodes){
     }
 }
 
+// Draw a node
 function drawNode(x,y,radius, context){
     context.beginPath();
     context.arc(x,y,radius,0,2*Math.PI);
@@ -1002,6 +1076,7 @@ function drawNode(x,y,radius, context){
     context.closePath();
 }
 
+// Draw a connection between nodes
 function drawConnection(ax,ay,bx,by,intensity, context){
     context.beginPath();
     context.strokeStyle= "rgba(0,0,0," + intensity + ")";
@@ -1011,10 +1086,12 @@ function drawConnection(ax,ay,bx,by,intensity, context){
     context.closePath();
 }
 
+// Sigmoid function
 function sigmoid(x){
     return 1/(1+Math.pow(Math.E,-x)); 
 }
 
+// Node object for neural network
 function Node(layer){
     this.layer = layer;
     this.weights = []; 
@@ -1022,6 +1099,7 @@ function Node(layer){
     this.ID = []; //ID = [a, b]; a = layer, b = node number
 }
 
+// Generate the appropriate number of nodes for each layer
 function genNodes(numNodes){
     var nodes = [];
     for (var layer = 0; layer < numNodes.length; layer++){
@@ -1033,6 +1111,7 @@ function genNodes(numNodes){
     return nodes;
 }
 
+// Generate the appropriate number of weights for each node
 function genWeights(nodes){
     // for all layers except for last layer
     for (var l = 0; l < nodes.length-1; l++){
@@ -1047,99 +1126,5 @@ function genWeights(nodes){
     }
 }
 
-function randWeights(numNodes){
-    var w = [];
-    for (var layer = 0; layer < numNodes.length; layer++){
-        if (!w[layer]) w[layer] = [];
-        for (var node = 0; node < numNodes[layer]; node++){
-            w[layer].push(0);
-        }
-    }
-    return w;
-}
-
-/*
-    Get the genes for a network 'n'
-    GENE STRUCTURE:
-    Network = [2, 3, 2]
-    Nodes:
-        Layer 0: 00, 01
-        Layer 1: 10, 11, 12
-        Layer 2: 20, 21
-
-             Layer Sizes                      Weights between nodes
-              v------v  v-----------------------------------------------------------------v
-    Genes: [3, 2, 3, 2, 00->10, 00->11, 00->12, 01->10, 01->11, 01->12, ..., 12->20, 12->21]
-            ^num layers
-        where 'a->b' indicates the weight between node a to b
-*/
-function getGenes(n){
-    var layerSizes = n.numNodes; // number of nodes in each layer [a, b, c] 
-    var numLayers = layerSizes.length;
-    var genes = [numLayers];
-    for (var l = 0; l < numLayers; l++){
-        genes.push(layerSizes[l]);
-    }
-
-    var nodes = n.nodes;
-    for (var l = 0; l < numLayers; l++){
-        for (var n = 0; n < layerSizes[l]; n++){
-            genes.push.apply(genes, nodes[l][n].weights);
-        }
-    }
-
-    return genes;
-}
-
-// Generate a network given its genes
-function genNetwork(genes){
-    var numLayers = genes.shift();
-    var layerSizes = [];
-    for (var l = 0; l < numLayers; l++){
-        layerSizes.push(genes.shift()); 
-    }
-
-    var net = new Network(layerSizes);
-    var pos = 0;
-    for (var l = 0; l < numLayers-1; l++){
-        for (var n = 0; n < layerSizes[l]; n++){
-            for (var n_dest = 0; n_dest < layerSizes[l+1]; n_dest++){
-                net.setWeight(l, n, n_dest, genes[pos++]) ;   
-            }
-        }
-    }
-
-    return net;
-}
-
-
-function createGraph(id, title, xLabel, yLabel, w, h, parentDiv){
-    // Create div for graph
-    var div = document.createElement("div");
-    div.id = id;
-    div.className = 'graph';
-
-    // Add the div to the parent div (if one exists)
-    // Otherwise just append to HTML body
-    if (parentDiv) document.getElementById(parentDiv).appendChild(div);
-    else document.body.appendChild(div);
-
-    // Create actual graph (goes into the div with id = id)
-    var dataArray = [[0,0]];
-    var graph = new Dygraph(document.getElementById(id), dataArray,
-        {
-            // Options go here
-            animatedZooms: true,
-            title: title,
-            titleHeight: 25,
-            labels: [xLabel, yLabel],
-            height: 200,
-            width: 300,
-            showLabelsOnHighlight: false,
-            rightGap: 30,
-        }
-    );
-    return graph;
-}
-
+// Call the main function to start things off
 main();
