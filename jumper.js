@@ -110,6 +110,10 @@ function resetWorld(){
         humanContestNetworks.push(genNetwork(getGenes(bestNetwork)));
     }
     contests[contests.length-1] = new Contest(humanContestNetworks);
+    contests[contests.length-1].players[0].name = "Human";
+    for (var p = 1; p < playersPerContest; p++){
+        contests[contests.length-1].players[p].name = "Bot Player";
+    }
 
     // Create the clouds
     clouds = [];
