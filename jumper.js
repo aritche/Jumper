@@ -443,6 +443,9 @@ function checkKey(e){
         e.preventDefault();
     }
     if (e.keyCode == '65') players[0].attack();
+
+    // Log the best network on pressing 'l' key
+    if (e.keyCode == '76') logNetwork();
 }
 document.onkeydown = checkKey;
 
@@ -706,6 +709,11 @@ function paintDanger(){
 // Toggle testing mode
 function toggleTesting(){
     testing = testing ? false : true;
+}
+
+// Log the genes of the best network
+function logNetwork(){
+    console.log(getGenes(getBestNetwork()));
 }
 
 // Paint players
