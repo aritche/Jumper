@@ -985,7 +985,7 @@ function Network(numNodes){
                 for (var np = 0; np < this.numNodes[l]; np++){
                     total += this.nodes[l][np].value * this.nodes[l][np].weights[n];
                 }
-                this.nodes[l+1][n].value = sigmoid(total);
+                this.nodes[l+1][n].value = relu(total);
             }
         }
 
@@ -1064,6 +1064,15 @@ function Network(numNodes){
         context.textBaseline = "top";
         context.fillText("Best Net (Prev Gen)",canv.width*0.02, canv.height*0.02);
         context.closePath();
+    }
+}
+
+// ReLU activation function
+function relu(x){
+    if (x > 0){
+        return x;
+    } else{
+        return 0;
     }
 }
 
